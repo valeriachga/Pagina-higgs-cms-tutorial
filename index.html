@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El Higgs en CMS Open Data</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚛️</text></svg>">
+<!--
+  index.html: tutorial interactivo "Buscando el bosón de Higgs con datos abiertos de CMS"
+  (nivel preparatoria). Versión HTML + JavaScript de app.py (Streamlit).
+
+  QUÉ HACE
+  --------
+  Es una página web estática: no necesita Python ni servidor propio. Todo el cálculo
+  (cortes, histogramas, tabla cutflow) lo hace el navegador con JavaScript, con los
+  mismos valores y el mismo orden que 02_cutflow.py.
+
+  QUÉ ARCHIVOS LEE (dentro del mismo repositorio)
+  -----------------------------------------------
+    web_data/muestra_eventos.csv.gz   -> generado con scripts/preparar_muestra.py
+    imagenes/*.png                    -> ilustraciones (scripts/generar_imagenes.py)
+    resultados/grafica_final.png      -> tu gráfica final oficial (opcional)
+
+  CÓMO SE VE EN TU COMPUTADORA
+  ----------------------------
+  El navegador no deja leer archivos con doble clic (file://), así que hay que abrir
+  un servidor local en la carpeta del repositorio:
+      python -m http.server 8000
+  y entrar a http://localhost:8000
+  En GitHub Pages funciona directamente.
+-->
+<style>
+  :root {
+    --azul: #3B6FB6; --azul-claro: #9ecae1; --rojo: #C8553D; --gris: #f5f5f3; --borde: #e3e3df;
+    --texto: #222; --suave: #666;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 17px; }
+  body { margin: 0; font-family: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+         color: var(--texto); background: #fff; line-height: 1.65; }
+  a { color: var(--azul); }
+  code { background: #f0f0ee; padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.92em; }
+  pre { background: #f6f6f4; border: 1px solid var(--borde); border-radius: 8px; padding: 0.9rem 1rem;
+        overflow-x: auto; font-size: 0.88rem; line-height: 1.5; }
+
+  /* ---------- menú lateral ---------- */
+  #sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 290px; background: var(--gris);
+             border-right: 1px solid var(--borde); padding: 1.6rem 1.1rem; overflow-y: auto; z-index: 20; }
+  #sidebar h2 { font-size: 1.3rem; margin: 0 0 1.2rem; line-height: 1.3; }
+  #sidebar nav a { display: block; padding: 0.45rem 0.75rem; margin-bottom: 0.15rem; border-radius: 8px;
+                   color: var(--texto); text-decoration: none; font-size: 1.02rem; line-height: 1.35; }
+  #sidebar nav a:hover { background: #ebebe7; }
+  #sidebar nav a.activa { background: #fff; color: var(--azul); font-weight: 600;
+                          box-shadow: 0 0 0 1px var(--borde); }
+  #menu-btn { display: none; }
+  main { margin-left: 290px; padding: 2.2rem 3rem 4rem; max-width: 1500px; }
+  section.pagina { display: none; }
+  section.pagina.visible { display: block; }
+
+  h1 { font-size: 2.2rem; line-height: 1.25; margin: 0 0 1.2rem; }
+  h2 { font-size: 1.6rem; margin: 1.8rem 0 0.7rem; line-height: 1.3; }
+  h3 { font-size: 1.25rem; margin: 1.4rem 0 0.5rem; }
+  .tabpanel > h2:first-child { margin-top: 0.6rem; }
+  .caption { color: var(--suave); font-size: 0.92rem; }
+
+  /* ---------- pestañas ---------- */
+  .tablist { display: flex; flex-wrap: wrap; gap: 0.2rem; border-bottom: 1px solid var(--borde); margin-bottom: 1.2rem; }
+  .tablist button { background: none; border: none; border-bottom: 3px solid transparent; padding: 0.55rem 0.9rem;
+                    font: inherit; font-size: 1.02rem; cursor: pointer; color: var(--suave); }
+  .tablist button:hover { color: var(--texto); }
+  .tablist button.activa { color: var(--rojo); border-bottom-color: var(--rojo); }
+  .tabpanel { display: none; }
+  .tabpanel.visible { display: block; }
+
+  /* ---------- avisos ---------- */
+  .aviso { border-radius: 8px; padding: 0.85rem 1rem; margin: 0.9rem 0; }
+  .info { background: #e8f0fb; color: #1d4370; }
+  .success { background: #e5f4ea; color: #1d5a32; }
+  .warning { background: #fdf5dc; color: #6b5300; }
+  .error { background: #fbe7e6; color: #7d241c; }
+
+  /* ---------- tablas ---------- */
+  .tabla-wrap { overflow-x: auto; margin: 0.8rem 0 1.2rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.97rem; }
+  th, td { border-bottom: 1px solid var(--borde); padding: 0.5rem 0.7rem; text-align: left; vertical-align: top; }
+  thead th { color: var(--suave); font-weight: 600; border-bottom: 2px solid var(--borde); }
+  tbody th { font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.compacta { font-size: 0.85rem; }
+  table.compacta th, table.compacta td { padding: 0.3rem 0.5rem; white-space: nowrap; }
+
+  /* ---------- imágenes ---------- */
+  figure { margin: 1rem 0 1.3rem; }
+  figure img { max-width: 100%; height: auto; display: block; }
+  figcaption { color: var(--suave); font-size: 0.92rem; margin-top: 0.35rem; }
+
+  /* ---------- desplegables ---------- */
+  details { border: 1px solid var(--borde); border-radius: 8px; margin: 0.7rem 0; background: #fff; }
+  details > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 500; list-style-position: inside; }
+  details[open] > summary { border-bottom: 1px solid var(--borde); }
+  details > .contenido { padding: 0.7rem 1rem 0.9rem; }
+
+  /* ---------- botones y controles ---------- */
+  button.btn { font: inherit; font-size: 0.98rem; padding: 0.5rem 0.9rem; border: 1px solid #cfcfca; background: #fff;
+               border-radius: 8px; cursor: pointer; }
+  button.btn:hover { border-color: var(--rojo); color: var(--rojo); }
+  .rejilla-botones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; margin-bottom: 0.6rem; }
+  .rejilla-botones .btn { width: 100%; }
+  .fila { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; margin: 0.5rem 0; }
+  .control { margin: 0.6rem 0; }
+  .control label { display: flex; justify-content: space-between; font-size: 0.95rem; }
+  .control label output { font-weight: 600; color: var(--rojo); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--rojo); }
+  input[type=number] { font: inherit; padding: 0.35rem 0.5rem; border: 1px solid #cfcfca; border-radius: 6px; width: 12rem; }
+  .opciones label { display: block; margin: 0.2rem 0; cursor: pointer; }
+  .opciones.horizontal label { display: inline-block; margin-right: 1.3rem; }
+  .pregunta { margin: 1.1rem 0; }
+  .pregunta > p { margin: 0 0 0.3rem; font-weight: 500; }
+
+  /* ---------- columnas y métricas ---------- */
+  .cols { display: grid; gap: 1.6rem; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .cols-pi { grid-template-columns: 1fr 1.2fr; align-items: start; }
+  .cols-tutorial { grid-template-columns: 1fr 2.2fr; align-items: start; }
+  .cols-graf { grid-template-columns: 1fr; max-width: 720px; }
+  @media (min-width: 1750px) { .cols-graf { grid-template-columns: 1fr 1fr; max-width: none; } }
+  .metrica .etiqueta { font-size: 0.92rem; color: var(--suave); }
+  .metrica .valor { font-size: 2rem; line-height: 1.2; }
+  .metrica .delta { font-size: 0.88rem; color: var(--suave); background: #f0f0ee; display: inline-block;
+                    padding: 0 0.45rem; border-radius: 10px; }
+  .progreso { margin: 0.8rem 0; }
+  .progreso .barra { height: 8px; background: #ececea; border-radius: 4px; overflow: hidden; margin-top: 0.3rem; }
+  .progreso .barra div { height: 100%; background: var(--rojo); transition: width 0.2s; }
+  .grafica svg { width: 100%; height: auto; display: block; }
+  .formula { text-align: center; font-family: "Cambria Math", "STIX Two Math", Georgia, serif; font-size: 1.2rem;
+             margin: 1rem 0; overflow-x: auto; }
+  .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 0.2em; }
+  .frac > span:first-child { border-bottom: 1px solid currentColor; padding: 0 0.2em; }
+  hr { border: none; border-top: 1px solid var(--borde); margin: 2rem 0; }
+  #pi-canvas { width: 100%; max-width: 420px; aspect-ratio: 1; display: block; }
+
+  @media (max-width: 1100px) {
+    .cols-tutorial { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 860px) {
+    #sidebar { transform: translateX(-100%); transition: transform 0.2s; box-shadow: 0 0 20px rgba(0,0,0,0.15); }
+    #sidebar.abierto { transform: none; }
+    #menu-btn { display: block; position: fixed; top: 0.7rem; left: 0.7rem; z-index: 30; font-size: 1.3rem;
+                padding: 0.25rem 0.65rem; }
+    main { margin-left: 0; padding: 3.6rem 1.1rem 3rem; }
+    .cols-2, .cols-3, .cols-pi { grid-template-columns: 1fr; }
+    .rejilla-botones { grid-template-columns: 1fr 1fr; }
+    h1 { font-size: 1.75rem; }
+  }
+</style>
+</head>
+<body>
+
+<button id="menu-btn" class="btn" aria-label="Abrir menú">☰</button>
+<aside id="sidebar">
+  <h2>El Higgs en CMS Open Data</h2>
+  <nav id="menu">
+    <a href="#introduccion">Introducción</a>
+    <a href="#fundamentos">Fundamentos de la física de partículas</a>
+    <a href="#lhc">El LHC y el detector CMS</a>
+    <a href="#como-se-analiza">Cómo se analiza un dato</a>
+    <a href="#montecarlo">Simulaciones Monte Carlo</a>
+    <a href="#analiza">Analiza los datos</a>
+    <a href="#conclusiones">Conclusiones y autoevaluación</a>
+    <a href="#descargas">Descarga de datos y créditos</a>
+  </nav>
+</aside>
+
+<main>
+
+<!-- =================================================================================
+     SECCIÓN 1. INTRODUCCIÓN
+     ================================================================================= -->
+<section class="pagina" id="introduccion">
+  <h1>Buscando el bosón de Higgs con datos abiertos de CMS</h1>
+  <figure><img src="imagenes/portada.png" alt="" style="width:760px"></figure>
+  <p>Bienvenido. En esta página vas a hacer lo mismo que hace un científico del experimento CMS:
+    tomar millones de colisiones de partículas y <strong>filtrar</strong> los datos hasta encontrar una señal
+    muy pequeña, la del <strong>bosón de Higgs</strong>. No necesitas conocimientos previos de física, solo curiosidad.</p>
+  <div class="aviso info">Los datos son reales: colisiones protón-protón a 8 TeV registradas por CMS en 2012 y
+    liberadas públicamente en el portal CERN Open Data.</div>
+  <div class="cols cols-2">
+    <div>
+      <h3>¿Qué es el CERN?</h3>
+      <p>El CERN es la Organización Europea para la Investigación Nuclear, cerca de Ginebra, fundada en
+        1954. Ahí está el <strong>LHC</strong>, el acelerador de partículas más grande del mundo, donde se hacen chocar
+        protones para estudiar de qué está hecha la materia.</p>
+    </div>
+    <div>
+      <h3>¿Qué es CMS?</h3>
+      <p>CMS (<em>Compact Muon Solenoid</em>) es uno de los grandes detectores del LHC. Es operado por una
+        colaboración de miles de científicos de decenas de países. En 2012, CMS y ATLAS anunciaron el
+        descubrimiento del bosón de Higgs.</p>
+    </div>
+  </div>
+  <h3>Al terminar esta página podrás…</h3>
+  <ul>
+    <li>Explicar qué son las partículas, el Modelo Estándar y el bosón de Higgs.</li>
+    <li>Describir cómo un detector como CMS identifica electrones y muones.</li>
+    <li>Explicar qué es una simulación Monte Carlo y para qué sirve.</li>
+    <li>Aplicar cortes a datos reales y ver cómo aparece (o no) una señal.</li>
+  </ul>
+  <h2>Ir directo a una sección</h2>
+  <div class="rejilla-botones">
+    <button class="btn" data-ir="fundamentos">🧩 Fundamentos</button>
+    <button class="btn" data-ir="lhc">🔬 LHC y CMS</button>
+    <button class="btn" data-ir="como-se-analiza">📐 Cómo se analiza un dato</button>
+    <button class="btn" data-ir="montecarlo">🎲 Monte Carlo</button>
+    <button class="btn" data-ir="analiza">🎯 Analiza los datos</button>
+    <button class="btn" data-ir="conclusiones">✅ Conclusiones y quiz</button>
+    <button class="btn" data-ir="descargas">⬇️ Descargas</button>
+  </div>
+  <h2>Hoja de ruta</h2>
+  <div class="tabla-wrap"><table>
+    <thead><tr><th>Sección</th><th>¿Qué vas a hacer?</th></tr></thead>
+    <tbody>
+      <tr><th>Fundamentos de la física de partículas</th><td>Conocer las partículas, el Modelo Estándar, los bosones Z y W y el Higgs.</td></tr>
+      <tr><th>El LHC y el detector CMS</th><td>Ver cómo se producen las colisiones y cómo se detectan electrones y muones.</td></tr>
+      <tr><th>Cómo se analiza un dato</th><td>Entender la masa invariante, el canal H → ZZ → 4 leptones, la estadística y los filtros de selección.</td></tr>
+      <tr><th>Simulaciones Monte Carlo</th><td>Descubrir qué son las simulaciones, la señal, el fondo y los pesos.</td></tr>
+      <tr><th>Analiza los datos</th><td>Resolver un reto: elegir cortes paso a paso hasta que tu gráfica se parezca a la oficial.</td></tr>
+      <tr><th>Conclusiones y autoevaluación</th><td>Repasar lo aprendido, el glosario y contestar un mini examen.</td></tr>
+      <tr><th>Descarga de datos y créditos</th><td>Bajar los datos y el código para repetirlo en tu computadora.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- =================================================================================
+     SECCIÓN 2. FUNDAMENTOS
+     ================================================================================= -->
+<section class="pagina" id="fundamentos">
+  <h1>Fundamentos de la física de partículas</h1>
+  <div class="tabs">
+    <div class="tablist">
+      <button>¿Qué son las partículas?</button><button>Leptones y cargas</button><button>El Modelo Estándar</button>
+      <button>Los bosones Z y W</button><button>El bosón de Higgs</button>
+    </div>
+
+    <div class="tabpanel">
+      <h2>¿Qué son las partículas?</h2>
+      <figure><img src="imagenes/atomo.png" alt="" style="width:720px"><figcaption>De la materia cotidiana a los quarks (tamaños aproximados).</figcaption></figure>
+      <p>Todo lo que ves está hecho de átomos. Un átomo tiene un núcleo (protones y neutrones) y
+        electrones a su alrededor. Pero los protones y neutrones tampoco son lo más pequeño: están
+        hechos de <strong>quarks</strong>, unidos por <strong>gluones</strong>. A las piezas que, hasta donde sabemos, ya no se
+        pueden dividir las llamamos <strong>partículas elementales</strong>.</p>
+      <p>Un protón, por ejemplo, es una partícula <strong>compuesta</strong>: dos quarks <em>up</em> y uno <em>down</em>, además de
+        gluones. El electrón, en cambio, es elemental.</p>
+      <h3>Los aceleradores son microscopios</h3>
+      <p>Para ver estructuras más pequeñas se necesita más energía. Por eso se construyen aceleradores:
+        al hacer chocar partículas con energías enormes, se puede <em>explorar</em> lo muy pequeño y <em>producir</em>
+        partículas nuevas, que existen solo un instante antes de desintegrarse.</p>
+      <p class="caption">GeV = gigaelectronvoltio, unidad de energía y de masa en física de partículas.
+        Un protón pesa casi 1 GeV (y 1 TeV = 1,000 GeV).</p>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Leptones: electrones, muones y compañía</h2>
+      <p>Los <strong>leptones</strong> son partículas elementales que no sienten la fuerza fuerte. Hay tres 'sabores'
+        con carga eléctrica (electrón, muón, tau) y tres neutrinos, sin carga.</p>
+      <div class="tabla-wrap"><table>
+        <thead><tr><th></th><th>Carga</th><th>Masa</th><th>¿Qué pasa con ella?</th></tr></thead>
+        <tbody>
+          <tr><th>Electrón (e)</th><td>−1</td><td>0.511 MeV</td><td>Es estable: se detecta fácilmente en el rastreador y el calorímetro.</td></tr>
+          <tr><th>Muón (μ)</th><td>−1</td><td>105.7 MeV</td><td>Dura unos 2.2 microsegundos, pero a velocidades cercanas a la de la luz le alcanza para atravesar todo el detector.</td></tr>
+          <tr><th>Tau (τ)</th><td>−1</td><td>1.777 GeV</td><td>Se desintegra casi al instante (≈ 3×10⁻¹³ s): no la vemos directamente.</td></tr>
+          <tr><th>Neutrinos (ν)</th><td>0</td><td>casi cero</td><td>Casi no interactúa con la materia: escapa del detector sin dejar señal.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Cada partícula tiene una <strong>antipartícula</strong> con la carga contraria: el positrón (+1) para el
+        electrón y el antimuón (+1) para el muón. En el detector distinguimos ambos por hacia dónde
+        se curvan en el campo magnético.</p>
+      <div class="aviso info">La carga eléctrica se conserva. Un Higgs es neutro, así que si se desintegra en 4 leptones,
+        la suma de sus cargas debe ser cero: dos positivos y dos negativos.</div>
+    </div>
+
+    <div class="tabpanel">
+      <h2>El Modelo Estándar</h2>
+      <figure><img src="imagenes/modelo_estandar.png" alt="" style="width:720px"><figcaption>Las 17 partículas elementales del Modelo Estándar, con su masa y su carga.</figcaption></figure>
+      <p>Es la teoría que ordena todas las partículas elementales conocidas en dos grupos:</p>
+      <ul>
+        <li><strong>Fermiones</strong> (los ladrillos de la materia): 6 quarks y 6 leptones, en tres 'generaciones'
+          cada vez más pesadas. La materia ordinaria solo usa la primera (u, d, e).</li>
+        <li><strong>Bosones</strong> (transmiten las fuerzas): el fotón (electromagnetismo), los bosones W y Z (fuerza
+          débil) y los gluones (fuerza fuerte).</li>
+        <li>El <strong>bosón de Higgs</strong>, una partícula especial ligada a cómo las demás obtienen su masa.</li>
+      </ul>
+      <details><summary>Lo que el Modelo Estándar todavía no explica</summary><div class="contenido"><ul>
+        <li><strong>La gravedad</strong>: no está incluida en el modelo.</li>
+        <li><strong>La materia oscura y la energía oscura</strong>: la materia ordinaria es solo ≈ 5 % del universo;
+          ≈ 27 % sería materia oscura y ≈ 68 % energía oscura.</li>
+        <li><strong>Las masas de los neutrinos</strong> y por qué hay más materia que antimateria.</li>
+      </ul></div></details>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Los bosones Z y W</h2>
+      <p>Los bosones <strong>W</strong> (carga ±1, masa de unos 80 GeV) y <strong>Z</strong> (neutro, unos <strong>91 GeV</strong>) transmiten la
+        fuerza débil, responsable, por ejemplo, de ciertas desintegraciones radiactivas. Se descubrieron
+        en el CERN en 1983.</p>
+      <p>Ambos viven un instante muy corto y se desintegran enseguida. El Z se puede desintegrar en un par
+        de leptones de carga opuesta: alrededor de 3 de cada 100 veces en un electrón y un positrón, y otras
+        3 de cada 100 en un muón y un antimuón. Esos pares son los que buscamos.</p>
+      <p>Esto es importante porque el Higgs que buscamos se desintegra en <em>dos</em> bosones Z.</p>
+      <details><summary>¿Qué es una partícula 'virtual'?</summary><div class="contenido">
+        <p>Una partícula virtual es una que existe solo un instante y no tiene exactamente su masa
+          'normal'. Como el Higgs (125 GeV) pesa menos que dos Z juntos (≈ 182 GeV), una de las dos Z
+          tiene que ser virtual, con una masa menor. La llamamos Z*.</p>
+      </div></details>
+    </div>
+
+    <div class="tabpanel">
+      <h2>El bosón de Higgs</h2>
+      <p>Según el Modelo Estándar, las partículas elementales adquieren masa al interactuar con el
+        <strong>campo de Higgs</strong>, que llena todo el espacio. El bosón de Higgs es una pequeña vibración de ese campo,
+        igual que una ola es una vibración del mar.</p>
+      <figure><img src="imagenes/campo_higgs.png" alt="" style="width:720px"><figcaption>Esquema: el campo de Higgs tiene un valor distinto de cero en todo el espacio.</figcaption></figure>
+      <h3>Un poco de historia</h3>
+      <ul>
+        <li><strong>1964:</strong> varios físicos, entre ellos Peter Higgs, François Englert y Robert Brout, proponen el mecanismo.</li>
+        <li><strong>2012 (4 de julio):</strong> ATLAS y CMS anuncian el descubrimiento de una nueva partícula de unos <strong>125 GeV</strong>.</li>
+        <li><strong>2013:</strong> Peter Higgs y François Englert reciben el Premio Nobel de Física.</li>
+      </ul>
+      <h3>¿Qué lo hace especial?</h3>
+      <ul>
+        <li>Es la única partícula elemental conocida <strong>sin espín</strong> (espín 0).</li>
+        <li>Da masa a los bosones W y Z y a los quarks y leptones cargados.</li>
+        <li><strong>No</strong> explica toda la masa de la materia: la mayor parte de la masa de un protón viene de la
+          energía de la fuerza fuerte entre sus quarks, no del Higgs.</li>
+      </ul>
+      <h3>¿Cómo se desintegra?</h3>
+      <p>El Higgs vive una fracción minúscula de segundo (≈ 10⁻²² s) y no se ve directamente: lo
+        identificamos por las partículas en las que se desintegra.</p>
+      <figure><img src="imagenes/higgs_desintegraciones.png" alt="" style="width:720px"><figcaption>Cómo se desintegra un Higgs de 125 GeV (porcentajes aproximados).</figcaption></figure>
+      <p>El modo más frecuente (b b̄) está sepultado en ruido de fondo, mientras que el canal de 4 leptones
+        es muy raro pero muy limpio. Por eso lo usamos.</p>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================================
+     SECCIÓN 3. EL LHC Y CMS
+     ================================================================================= -->
+<section class="pagina" id="lhc">
+  <h1>El LHC y el detector CMS</h1>
+  <div class="tabs">
+    <div class="tablist">
+      <button>Colisiones y luminosidad</button><button>Detectando electrones y muones</button>
+      <button>Variables que mide CMS</button><button>Del detector al CSV</button>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Colisiones protón-protón</h2>
+      <figure><img src="imagenes/lhc.png" alt="" style="width:720px"><figcaption>El LHC y sus cuatro grandes experimentos.</figcaption></figure>
+      <p>El <strong>LHC</strong> (Gran Colisionador de Hadrones) es un anillo de unos 27 km de circunferencia,
+        enterrado cerca de Ginebra. Acelera protones casi a la velocidad de la luz en dos haces que giran
+        en sentidos opuestos. En 2012 cada haz tenía 4 TeV, así que cada choque tenía 8 TeV de energía.
+        Cada choque se llama <strong>evento</strong>.</p>
+      <p>Los protones viajan en paquetes que se cruzan decenas de millones de veces por segundo, y en
+        cada cruce chocan, en promedio, alrededor de 20 pares de protones a la vez. Es imposible guardar
+        todo: un sistema de selección llamado <em>trigger</em> decide en una fracción de segundo qué eventos
+        valen la pena y guarda solo unos cientos por segundo.</p>
+      <h3>Luminosidad y número de eventos</h3>
+      <p>La <strong>luminosidad integrada</strong> (L) mide cuántas colisiones se acumularon. Los datos que usamos
+        corresponden a <strong>11.58 fb⁻¹</strong> (= 11,580 pb⁻¹; 1 fb⁻¹ = 1,000 pb⁻¹). Si un proceso tiene sección
+        eficaz σ (qué tan probable es), el número esperado de eventos es:</p>
+      <div class="formula"><i>N</i> = <i>σ</i> × <i>L</i></div>
+      <div class="aviso info">Ejemplo: la simulación de Higgs → ZZ → 4ℓ que usamos tiene σ = 0.0065 pb. Entonces se esperan
+        0.0065 × 11,580 ≈ 75 eventos de este tipo producidos en todo 2012, antes de contar cuántos
+        alcanza a ver el detector.</div>
+    </div>
+
+    <div class="tabpanel">
+      <h2>¿Cómo detecta CMS a los leptones?</h2>
+      <figure><img src="imagenes/cms_detector.png" alt="" style="width:720px"><figcaption>Corte transversal esquemático de CMS: cada partícula deja una huella distinta.</figcaption></figure>
+      <p>CMS mide unos 21 m de largo y 15 m de diámetro, y pesa unas 14,000 toneladas. Está formado por
+        capas, como una cebolla, y cada una mide algo distinto:</p>
+      <ul>
+        <li><strong>Rastreador de silicio:</strong> sigue la trayectoria de las partículas cargadas. De ahí salen
+          variables como pT, η, φ, dxy y dz.</li>
+        <li><strong>Calorímetro electromagnético:</strong> frena a los electrones y mide su energía.</li>
+        <li><strong>Calorímetro hadrónico:</strong> frena a los hadrones (protones, piones…).</li>
+        <li><strong>Imán superconductor (3.8 teslas):</strong> curva las trayectorias. El sentido de la curva dice la carga.</li>
+        <li><strong>Cámaras de muones:</strong> los muones son los únicos que atraviesan casi todo el detector.</li>
+      </ul>
+      <details><summary>¿Cómo se mide el pT con la curvatura?</summary><div class="contenido">
+        <p>Una partícula cargada en un campo magnético B describe un círculo. Mientras más energía
+          tiene, más abierto es el círculo:</p>
+        <div class="formula"><i>p</i><sub>T</sub> [GeV] ≈ 0.3 × <i>B</i> [T] × <i>R</i> [m]</div>
+        <p>Con B = 3.8 T, un leptón de 20 GeV describe un círculo de unos 17.5 m de radio.</p>
+      </div></details>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Las variables que usaremos</h2>
+      <p>Estas son las medidas que usan los cortes del tutorial. Cada una se explica con un esquema.</p>
+      <h3>η y pT: ¿hacia dónde va y con cuánta fuerza?</h3>
+      <figure><img src="imagenes/eta_pt.png" alt="" style="width:720px"></figure>
+      <p><strong>η (eta)</strong> indica el ángulo respecto al haz: η = 0 es perpendicular y valores grandes son casi
+        paralelos al haz. El detector solo mide bien hasta |η| ≈ 2.5. <strong>pT</strong> es la parte del momento
+        perpendicular al haz, la que más nos interesa.</p>
+      <h3>dxy y dz: ¿nació en el punto de colisión?</h3>
+      <figure><img src="imagenes/impacto.png" alt="" style="width:720px"></figure>
+      <p>Un leptón que viene de un Higgs nace justo en el punto de colisión, así que su trayectoria pasa
+        casi por ahí. <strong>dxy</strong> y <strong>dz</strong> miden qué tan lejos pasa, en el plano transversal y a lo largo del haz.
+        <strong>SIP3D</strong> combina ambas distancias y las compara con su incertidumbre.</p>
+      <h3>Aislamiento: ¿viene solo o acompañado?</h3>
+      <figure><img src="imagenes/aislamiento.png" alt="" style="width:720px"></figure>
+      <p>Los leptones de un Higgs suelen estar solos. Los falsos (por ejemplo, de la desintegración de
+        quarks pesados) vienen rodeados de otras partículas. El aislamiento relativo mide esa actividad
+        alrededor del leptón.</p>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Del detector al archivo CSV</h2>
+      <figure><img src="imagenes/evento_csv.png" alt="" style="width:720px"><figcaption>Cada evento con 4 leptones se convierte en una fila de la tabla.</figcaption></figure>
+      <ol>
+        <li>El detector registra la colisión y el <em>trigger</em> decide si la guarda.</li>
+        <li>Se <strong>reconstruyen</strong> las partículas a partir de las señales de cada capa.</li>
+        <li>CERN Open Data publica los eventos en archivos con formato ROOT.</li>
+        <li>Nosotros los convertimos a <strong>CSV</strong>: una fila por evento y una columna por cada medición
+          (<code>pt1</code>, <code>eta1</code>, <code>Q1</code>…).</li>
+        <li>Los CSV completos pesan varios gigabytes, por eso en esta página trabajamos con una versión reducida.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================================
+     SECCIÓN 4. CÓMO SE ANALIZA UN DATO
+     ================================================================================= -->
+<section class="pagina" id="como-se-analiza">
+  <h1>Cómo se analiza un dato</h1>
+  <div class="tabs">
+    <div class="tablist">
+      <button>Visión general</button><button>Masa invariante</button><button>El canal H → ZZ → 4ℓ</button>
+      <button>Estadística básica</button><button>Selección de eventos</button>
+    </div>
+
+    <div class="tabpanel">
+      <h2>La receta de un análisis</h2>
+      <ol>
+        <li><strong>Elegir qué buscar:</strong> un proceso concreto, aquí H → ZZ → 4 leptones.</li>
+        <li><strong>Seleccionar eventos:</strong> aplicar cortes para quedarnos con los que parecen la señal.</li>
+        <li><strong>Predecir el fondo:</strong> con simulaciones Monte Carlo, qué esperamos <em>sin</em> Higgs.</li>
+        <li><strong>Comparar con los datos:</strong> poner datos y predicción en la misma gráfica.</li>
+        <li><strong>Medir la incertidumbre:</strong> ¿el exceso es mayor que una fluctuación al azar?</li>
+        <li><strong>Concluir:</strong> ¿hay evidencia de algo nuevo?</li>
+      </ol>
+    </div>
+
+    <div class="tabpanel">
+      <h2>La masa invariante</h2>
+      <figure><img src="imagenes/masa_invariante.png" alt="" style="width:720px"></figure>
+      <p>Si una partícula pesada se desintegra, no podemos verla, pero sí a sus hijas. Con la energía
+        y el momento de las hijas se reconstruye la masa de la madre:</p>
+      <div class="formula"><i>m</i><sup>2</sup> = <i>E</i><sup>2</sup> − <i>p<sub>x</sub></i><sup>2</sup> − <i>p<sub>y</sub></i><sup>2</sup> − <i>p<sub>z</sub></i><sup>2</sup>
+        &nbsp;&nbsp;(<i>E</i> y <b>p</b> sumados de todas las hijas)</div>
+      <p>Ejemplo: si un electrón y un positrón vienen de un Z, su masa invariante sale cerca de 91 GeV.
+        Si vienen de un Higgs, los 4 leptones dan un valor cercano a 125 GeV. Si vienen de otros procesos,
+        la masa se reparte en muchos valores. Cada evento aporta <em>un</em> número, y al juntar muchos
+        eventos buscamos un <strong>pico</strong>.</p>
+      <hr>
+      <!-- Ejercicio interactivo (lo llena JavaScript: ver "EJERCICIO DE MASA INVARIANTE") -->
+      <h3>Ejercicio: ¿de qué partícula vienen estos leptones?</h3>
+      <p>Un detector midió los leptones de la tabla (los tratamos sin masa, porque es muy pequeña comparada
+        con su energía). <strong>Calcula su masa invariante</strong> y decide qué partícula los produjo.</p>
+      <div class="fila" style="justify-content:space-between">
+        <div class="opciones horizontal" id="ej-nivel">
+          <strong style="margin-right:1rem">Nivel</strong>
+          <label><input type="radio" name="ej-nivel" value="2" checked> Dos leptones (más fácil)</label>
+          <label><input type="radio" name="ej-nivel" value="4"> Cuatro leptones (reto)</label>
+        </div>
+        <button class="btn" id="ej-nuevo">🎲 Nuevo ejercicio</button>
+      </div>
+      <div id="ejercicio"></div>
+    </div>
+
+    <div class="tabpanel">
+      <h2>¿Por qué buscar el Higgs en 4 leptones?</h2>
+      <figure><img src="imagenes/higgs_decay.png" alt="" style="width:720px"><figcaption>Esquema de la desintegración H → ZZ* → 4 leptones.</figcaption></figure>
+      <p>Una forma en que el Higgs se desintegra es <strong>H → Z + Z* → 4 leptones</strong> (electrones o muones).
+        Es un canal muy raro, solo alrededor de 1 Higgs de cada 8,000, pero muy <strong>limpio</strong>: los leptones
+        se miden con gran precisión y hay poco ruido de fondo. Junto con la desintegración en dos fotones,
+        fue uno de los canales del descubrimiento de 2012.</p>
+      <p>Como el Higgs (125 GeV) pesa menos que dos Z (2 × 91 GeV), una de las dos Z es <em>virtual</em> y
+        tiene una masa menor. Por eso en los cortes la masa de Z2 se permite desde 12 GeV.</p>
+      <p>Hay tres combinaciones finales: <strong>4 muones</strong>, <strong>4 electrones</strong> o <strong>2 electrones + 2 muones</strong>.</p>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Estadística básica</h2>
+      <figure><img src="imagenes/poisson.png" alt="" style="width:720px"></figure>
+      <ul>
+        <li><strong>Histograma:</strong> cuenta cuántos eventos caen en cada intervalo de masa.</li>
+        <li><strong>Incertidumbre estadística:</strong> si en un intervalo hay N eventos, la incertidumbre es √N.
+          Por eso los puntos de los datos llevan barras de error.</li>
+        <li><strong>Fluctuaciones:</strong> aunque el fondo esperado sea 10 eventos, a veces se observan 8 y a veces 13.
+          Un exceso solo es convincente si es mucho mayor que esas fluctuaciones.</li>
+        <li><strong>5 sigmas (5σ):</strong> el estándar para declarar un descubrimiento. Significa que, sin una partícula
+          nueva, un exceso así ocurriría por azar aproximadamente 1 vez de cada 3.5 millones.</li>
+      </ul>
+      <div class="formula">incertidumbre ≈ √<span style="text-decoration:overline">N</span></div>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Selección de eventos: los cortes</h2>
+      <p>Entre millones de eventos, casi todos contienen leptones <em>falsos</em> (por ejemplo, de otras
+        partículas que se parecen a un leptón). Un <strong>corte</strong> (o filtro) descarta eventos que no
+        se comportan como un Higgs real. Los que usamos:</p>
+      <div class="tabla-wrap"><table>
+        <thead><tr><th>Corte</th><th>Explicación física</th></tr></thead>
+        <tbody>
+          <tr><th>pT mínimo</th><td>Los leptones de baja energía suelen ser falsos o ruido.</td></tr>
+          <tr><th>|η| máximo</th><td>Más allá de cierto ángulo el detector no mide bien.</td></tr>
+          <tr><th>|dxy| y |dz|</th><td>Un leptón del Higgs nace en el punto de la colisión; si pasa lejos, viene de otro lugar.</td></tr>
+          <tr><th>SIP3D</th><td>Mide qué tan compatible es el leptón con nacer en el punto de colisión.</td></tr>
+          <tr><th>Aislamiento</th><td>Los leptones buenos están 'solos'; los falsos vienen rodeados de otras partículas.</td></tr>
+          <tr><th>Carga total = 0</th><td>El Higgs es neutro: 2 leptones positivos y 2 negativos suman cero.</td></tr>
+          <tr><th>pT1 y pT2</th><td>Los dos leptones más energéticos deben pasar un umbral (por el sistema de disparo).</td></tr>
+          <tr><th>Emparejamiento Z+Z</th><td>Deben poder formarse dos pares del mismo sabor y carga opuesta (dos Z).</td></tr>
+          <tr><th>Masas de Z1 y Z2</th><td>Z1 debe tener una masa cercana a la de la Z y Z2 puede ser virtual.</td></tr>
+          <tr><th>mll mínima</th><td>Elimina resonancias de baja masa que no son del Higgs.</td></tr>
+          <tr><th>m4l mínima</th><td>Se descartan masas demasiado bajas para el Higgs.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="aviso info">Los cortes se aplican en orden y cada uno incluye a los anteriores. Cuidado: si los aprietas
+        demasiado también pierdes señal. Un buen análisis busca el equilibrio entre eliminar fondo y
+        conservar señal.</div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================================
+     SECCIÓN 5. MONTE CARLO
+     ================================================================================= -->
+<section class="pagina" id="montecarlo">
+  <h1>Simulaciones Monte Carlo (MC)</h1>
+  <div class="tabs">
+    <div class="tablist">
+      <button>¿Qué es una simulación?</button><button>Cómo se simula una colisión</button>
+      <button>Señal y fondo</button><button>Pesos y luminosidad</button><button>Limitaciones</button>
+    </div>
+
+    <div class="tabpanel">
+      <h2>¿Qué es una simulación Monte Carlo?</h2>
+      <p>Es un programa que <strong>inventa colisiones</strong> siguiendo las leyes de la física, con números
+        aleatorios (de ahí el nombre, por el casino de Montecarlo). También simula cómo el
+        detector vería las partículas. Así sabemos <em>qué esperar</em> antes de mirar los datos reales.</p>
+      <figure><img src="imagenes/montecarlo_flujo.png" alt="" style="width:720px"><figcaption>Las simulaciones y los datos reales terminan en los mismos tipos de archivo.</figcaption></figure>
+      <h3>Pruébalo: estima π con números aleatorios</h3>
+      <div class="control" style="max-width:720px">
+        <label>Número de puntos aleatorios <output id="pi-n-val">2000</output></label>
+        <input type="range" id="pi-n" min="100" max="20000" step="100" value="2000">
+      </div>
+      <div class="cols cols-pi">
+        <canvas id="pi-canvas" width="840" height="840"></canvas>
+        <div>
+          <div class="metrica"><div class="etiqueta">π estimado</div><div class="valor" id="pi-valor"></div>
+            <span class="delta" id="pi-delta"></span></div>
+          <p>Se lanzan puntos al azar en un cuadrado de lado 1. La fracción que cae dentro del cuarto de
+            círculo es π/4. Con más puntos, la estimación mejora: así funcionan las simulaciones Monte Carlo,
+            con muchísimos números aleatorios.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Cómo se simula una colisión</h2>
+      <ol>
+        <li><strong>Generador de eventos</strong> (por ejemplo, Pythia): sortea qué proceso ocurre y con qué energías,
+          según las probabilidades que da la teoría.</li>
+        <li><strong>Quarks y gluones → partículas:</strong> los quarks no existen solos; se simula cómo se convierten
+          en chorros de partículas que sí veremos.</li>
+        <li><strong>Simulación del detector</strong> (con un programa llamado GEANT4): se calcula cómo cada partícula
+          atraviesa el material de CMS y qué señales deja.</li>
+        <li><strong>Reconstrucción:</strong> se aplica el <em>mismo</em> programa que a los datos reales.</li>
+      </ol>
+      <div class="aviso info">Por eso los archivos de simulación tienen las mismas columnas que los de datos reales:
+        podemos tratarlos exactamente igual.</div>
+      <p>Se simulan millones de eventos porque los procesos raros ocurren muy pocas veces, y para
+        tener una predicción con poca incertidumbre estadística hacen falta muchos.</p>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Señal y fondo</h2>
+      <figure><img src="imagenes/senal_fondo.png" alt="" style="width:720px"></figure>
+      <ul>
+        <li><strong>Señal:</strong> lo que buscamos. Aquí, la simulación de Higgs → ZZ → 4 leptones.</li>
+        <li><strong>Fondo:</strong> otros procesos que también producen 4 leptones y se parecen a la señal. Aquí,
+          <strong>ZZ → 4μ, ZZ → 4e y ZZ → 2e2μ</strong>.</li>
+        <li>Si en los datos hay <em>más</em> eventos que el fondo cerca de 125 GeV, hay algo extra: el Higgs.</li>
+      </ul>
+      <h3>Las simulaciones que usamos</h3>
+      <div class="tabla-wrap" id="tabla-simulaciones"></div>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Pesos: cómo comparar simulación con datos</h2>
+      <figure><img src="imagenes/pesos.png" alt="" style="width:720px"><figcaption>Ejemplo con la simulación ZZ → 4μ.</figcaption></figure>
+      <p>Se simulan millones de eventos, pero no son tantos como los reales. Cada evento simulado recibe un
+        <strong>peso</strong> para que el total corresponda a lo que se esperaría en los datos reales:</p>
+      <div class="formula">peso = <span class="frac"><span><i>L</i> × <i>σ</i> × <i>k</i></span><span><i>N</i><sub>generados</sub></span></span></div>
+      <ul>
+        <li><strong>L</strong>: luminosidad, 11,580 pb⁻¹.</li>
+        <li><strong>σ</strong>: sección eficaz del proceso (qué tan probable es), en pb.</li>
+        <li><strong>k</strong>: factor de corrección a órdenes superiores (en el fondo ZZ vale 1.386).</li>
+        <li><strong>N generados</strong>: eventos que produjo el programa.</li>
+      </ul>
+      <p>Cuando haces la gráfica, cada evento simulado cuenta con su peso y no como '1'. Los datos reales
+        siempre pesan 1.</p>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Limitaciones</h2>
+      <p>Nuestras simulaciones solo incluyen el fondo <strong>ZZ</strong>. En el análisis completo de CMS hay otros
+        fondos (por ejemplo, Z + jets), que aquí no están. Por eso no todo lo que ves en los datos
+        reales se puede explicar con las simulaciones.</p>
+      <ul>
+        <li>Solo usamos una parte de los datos y de los procesos.</li>
+        <li>No incluimos incertidumbres sistemáticas (por ejemplo, la eficiencia de identificar leptones).</li>
+        <li>Las simulaciones también tienen incertidumbre estadística.</li>
+      </ul>
+      <div class="aviso info">Parte de hacer ciencia es saber qué incluye tu modelo y qué no.</div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================================
+     SECCIÓN 6. ANALIZA LOS DATOS (todo lo dinámico lo llena JavaScript)
+     ================================================================================= -->
+<section class="pagina" id="analiza">
+  <h1>Analiza los datos</h1>
+  <div id="estado-carga" class="aviso info">Cargando la muestra de eventos (≈ 10 MB)…</div>
+  <div class="tabs">
+    <div class="tablist">
+      <button>Los archivos CSV</button><button>Tutorial de cortes</button><button>Tabla cutflow</button>
+      <button>Resultado final</button><button>Preguntas para pensar</button>
+    </div>
+
+    <div class="tabpanel">
+      <h2>¿Cómo se ven los archivos CSV?</h2>
+      <p>Cada fila es un <strong>evento</strong> con 4 leptones. Las columnas con número (1 a 4) se repiten para
+        cada leptón, ordenados por pT.</p>
+      <div class="tabla-wrap"><table>
+        <thead><tr><th>Columna</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr><th>run, luminosityBlock, event</th><td>Identifican el evento de forma única.</td></tr>
+          <tr><th>MET_pt, MET_phi</th><td>Energía transversal 'perdida' (neutrinos, por ejemplo).</td></tr>
+          <tr><th>PID1…PID4</th><td>Tipo de partícula: ±11 es electrón, ±13 es muón.</td></tr>
+          <tr><th>Q1…Q4</th><td>Carga eléctrica (+1 o −1).</td></tr>
+          <tr><th>pt1…pt4</th><td>Momento transversal (GeV).</td></tr>
+          <tr><th>eta1…eta4</th><td>Ángulo respecto al haz.</td></tr>
+          <tr><th>phi1…phi4</th><td>Ángulo alrededor del haz.</td></tr>
+          <tr><th>mass1…mass4</th><td>Masa del leptón (GeV).</td></tr>
+          <tr><th>dxy1…dxy4 y dz1…dz4</th><td>Distancia de la trayectoria al punto de colisión (cm).</td></tr>
+          <tr><th>dxyErr1…dzErr4</th><td>Incertidumbre de esas distancias.</td></tr>
+          <tr><th>pfRelIso03_all, pfRelIso04_all</th><td>Aislamiento relativo con cono 0.3 y 0.4.</td></tr>
+        </tbody>
+      </table></div>
+      <div id="muestra-ejemplo"></div>
+    </div>
+
+    <div class="tabpanel" id="panel-tutorial">
+      <h2>Tutorial: limpia los datos paso a paso</h2>
+      <p>Empiezas <strong>sin ningún corte</strong>, con todo el ruido. Tu misión es activar los cortes y elegir sus
+        valores para que la gráfica <strong>"Tus cortes"</strong> se parezca a la gráfica <strong>"Meta"</strong>, que usa la
+        selección oficial. Avanza por los pasos, uno a la vez, y fíjate cómo cambia la gráfica.</p>
+      <details open><summary>📋 Tabla de cortes oficiales</summary><div class="contenido">
+        <div class="tabla-wrap" id="tabla-oficial"></div></div></details>
+      <div class="cols cols-tutorial">
+        <div>
+          <div class="fila">
+            <button class="btn" id="btn-reiniciar">Empezar de nuevo</button>
+            <button class="btn" id="btn-respuesta">🔑 Mostrar la respuesta correcta</button>
+          </div>
+          <div id="pasos"></div>
+        </div>
+        <div id="tutorial-graficas"></div>
+      </div>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Tabla cutflow</h2>
+      <div id="cutflow"></div>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Resultado final</h2>
+      <div id="resultado-final"></div>
+      <details id="grafica-script" hidden><summary>Gráfica generada con el script 03_grafica_final.py</summary>
+        <div class="contenido"><img src="resultados/grafica_final.png" alt="" style="max-width:100%"
+          onload="document.getElementById('grafica-script').hidden=false"></div></details>
+    </div>
+
+    <div class="tabpanel">
+      <h2>Preguntas para pensar</h2>
+      <ol>
+        <li>¿Qué corte elimina más eventos de datos reales? ¿Y cuál afecta menos a la señal del Higgs?</li>
+        <li>Si aprietas demasiado los cortes, ¿qué le pasa a la señal? ¿Por qué no conviene?</li>
+        <li>¿Qué corte te pareció más importante para que aparezca el pico? Justifica tu respuesta.</li>
+        <li>¿Por qué crees que se exige que la carga total sea cero?</li>
+        <li>Con tus cortes, ¿los datos de CMS están de acuerdo con la simulación ZZ + Higgs?</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================================
+     SECCIÓN 7. CONCLUSIONES
+     ================================================================================= -->
+<section class="pagina" id="conclusiones">
+  <h1>Conclusiones, glosario y autoevaluación</h1>
+  <div class="tabs">
+    <div class="tablist"><button>Conclusiones</button><button>Glosario</button><button>Autoevaluación</button></div>
+    <div class="tabpanel">
+      <h2>Lo que aprendiste</h2>
+      <ul>
+        <li>Los datos de colisiones contienen muchísimo ruido; los <strong>cortes</strong> sirven para limpiarlos.</li>
+        <li>Las <strong>simulaciones Monte Carlo</strong> nos dicen qué esperar de la señal y del fondo, y los <strong>pesos</strong>
+          permiten compararlas con los datos.</li>
+        <li>El Higgs se busca como un <strong>pico</strong> cerca de 125 GeV en la masa de 4 leptones.</li>
+        <li>Para afirmar un descubrimiento hace falta compararlo con la incertidumbre estadística.</li>
+      </ul>
+      <h2>¿Y ahora qué?</h2>
+      <ul>
+        <li>Prueba con otros cortes en el tutorial y observa qué pasa con la señal.</li>
+        <li>Explora otros canales del Higgs, como la desintegración en dos fotones.</li>
+        <li>Los experimentos del LHC siguen buscando física nueva: materia oscura, partículas todavía
+          desconocidas y medidas más precisas del Higgs.</li>
+      </ul>
+    </div>
+    <div class="tabpanel"><div class="tabla-wrap" id="glosario"></div></div>
+    <div class="tabpanel">
+      <div id="quiz"></div>
+      <button class="btn" id="quiz-revisar">Revisar mis respuestas</button>
+      <div id="quiz-resultado"></div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================================
+     SECCIÓN 8. DESCARGAS
+     ================================================================================= -->
+<section class="pagina" id="descargas">
+  <h1>Descarga de datos y créditos</h1>
+  <ul id="enlaces-descarga"></ul>
+  <div class="aviso info">Los CSV completos pesan varios GB. Descárgalos solo si vas a trabajar en tu computadora.</div>
+  <h3>Para ir más lejos</h3>
+  <ul>
+    <li><a href="https://opendata.cern.ch" target="_blank" rel="noopener">CERN Open Data</a>: datos públicos de CMS y otros experimentos.</li>
+    <li><a href="https://opendata.atlas.cern" target="_blank" rel="noopener">ATLAS Open Data</a>: recursos educativos del experimento ATLAS.</li>
+    <li><a href="https://home.cern" target="_blank" rel="noopener">CERN</a> y <a href="https://cms.cern" target="_blank" rel="noopener">CMS</a>: noticias y material divulgativo.</li>
+  </ul>
+  <h3>Créditos y referencias</h3>
+  <ul>
+    <li>Datos: colaboración CMS, portal <a href="https://opendata.cern.ch/record/12360" target="_blank" rel="noopener">CERN Open Data</a>, licencia CC0.</li>
+    <li>Análisis basado en: CMS Collaboration, <em>Observation of a new boson at a mass of 125 GeV</em>, arXiv:1207.7235.</li>
+    <li>Las ilustraciones son esquemas hechos para esta página; no son imágenes reales de CMS ni están a escala.</li>
+    <li>Esta página está inspirada en la aplicación <em>ATLAS Open Data en el aula</em>.</li>
+  </ul>
+</section>
+
+</main>
+
+<script>
+"use strict";
+// =====================================================================================
+// 0. CONFIGURACIÓN (lo único que normalmente tendrás que editar)
+// =====================================================================================
+const REPO_URL = "https://github.com/valeriachga/higgs-4l-cms-opendata";
+const DRIVE_URL = "https://drive.google.com/drive/folders/1EeJIrFuOe8qOKbwBo9QCEP9_YRfOAyIt?usp=sharing";
+const RUTA_MUESTRA = "web_data/muestra_eventos.csv.gz";
+
+const BIN_MIN = 70, BIN_MAX = 180, N_BINS = 36;          // 36 bins entre 70 y 180 GeV (igual que 03_grafica_final.py)
+const ANCHO_BIN = (BIN_MAX - BIN_MIN) / N_BINS;
+const HIGGS = "Higgs", DATOS = "Datos";
+const MUESTRAS_ZZ = ["ZZ→4μ", "ZZ→4e", "ZZ→2e2μ"];
+const COLUMNAS = [HIGGS, ...MUESTRAS_ZZ, DATOS];          // códigos 0..4 de la columna "muestra"
+
+// =====================================================================================
+// 1. LOS CORTES (mismos valores y mismo orden que 02_cutflow.py)
+// =====================================================================================
+// Valores "oficiales" (selección del artículo de CMS arXiv:1207.7235)
+const OFICIAL = {
+  pt_e: 7.0, pt_mu: 5.0,            // pT mínimo electrones / muones (GeV)
+  eta_e: 2.5, eta_mu: 2.4,          // |eta| máximo electrones / muones
+  dxy: 0.5, dz: 1.0,                // parámetros de impacto máximos (cm)
+  sip: 4.0,                         // SIP3D máximo
+  iso: 0.4,                         // aislamiento relativo máximo
+  pt1: 20.0, pt2: 10.0,             // pT mínimo de los dos leptones más duros (GeV)
+  mz1_min: 40.0, mz1_max: 120.0,    // ventana de masa de Z1 (GeV)
+  mz2_min: 12.0, mz2_max: 120.0,    // ventana de masa de Z2 (GeV)
+  mll: 4.0,                         // masa mínima de cualquier par de carga opuesta (GeV)
+  m4l_min: 70.0,                    // masa mínima de los 4 leptones (GeV)
+};
+// Valores iniciales de los controles: tan sueltos que NO eliminan nada
+const LOOSE = {
+  pt_e: 0.0, pt_mu: 0.0, eta_e: 3.0, eta_mu: 3.0, dxy: 2.0, dz: 3.0, sip: 10.0, iso: 1.0,
+  pt1: 0.0, pt2: 0.0, mz1_min: 0.0, mz1_max: 180.0, mz2_min: 0.0, mz2_max: 180.0, mll: 0.0, m4l_min: 70.0,
+};
+// Orden de las etapas (cada una incluye a las anteriores)
+const ORDEN = ["pt", "eta", "ip", "sip", "iso", "carga", "pt12", "pares", "mz1", "mz2", "mll", "m4l"];
+
+// Para cada corte: título, explicación física, pista y controles [texto, mín, máx, paso, clave]
+const PASOS = {
+  pt: ["Energía mínima de los leptones",
+       "Los leptones de poca energía suelen ser falsos o ruido de fondo.",
+       "Los electrones suelen pedir un umbral un poco mayor que los muones. Prueba entre 3 y 10 GeV.",
+       [["pT mínimo electrones (GeV)", 0, 20, 0.5, "pt_e"], ["pT mínimo muones (GeV)", 0, 20, 0.5, "pt_mu"]]],
+  eta: ["Ángulo respecto al haz",
+        "Muy cerca del haz el detector no mide bien. η = 0 es perpendicular al haz.",
+        "Los muones se miden bien un poco menos lejos que los electrones. Prueba entre 2.0 y 2.6.",
+        [["|η| máximo electrones", 1, 3, 0.1, "eta_e"], ["|η| máximo muones", 1, 3, 0.1, "eta_mu"]]],
+  ip: ["Distancia al punto de colisión",
+       "Un leptón del Higgs nace en el punto de la colisión. Si su trayectoria pasa lejos, viene de otro lugar.",
+       "dxy (en el plano perpendicular al haz) suele ser más estricto que dz (a lo largo del haz). Prueba valores menores a 1 cm.",
+       [["|dxy| máximo (cm)", 0.05, 2, 0.05, "dxy"], ["|dz| máximo (cm)", 0.1, 3, 0.1, "dz"]]],
+  sip: ["SIP3D",
+        "Mide qué tan compatible es el leptón con nacer en el punto de colisión, tomando en cuenta la incertidumbre.",
+        "Es un número sin unidades; los leptones buenos tienen valores pequeños. Prueba entre 2 y 6.",
+        [["SIP3D máximo", 1, 10, 0.5, "sip"]]],
+  iso: ["Aislamiento",
+        "Los leptones buenos están 'solos'; los falsos vienen rodeados de otras partículas.",
+        "Es un cociente: valores pequeños significan más aislado. Prueba entre 0.2 y 0.6.",
+        [["Aislamiento relativo máximo", 0.05, 1, 0.05, "iso"]]],
+  carga: ["Carga total cero",
+          "El Higgs es neutro, así que los 4 leptones deben sumar carga 0 (2 positivos y 2 negativos).",
+          "Este corte no tiene valor que elegir: solo actívalo.", []],
+  pt12: ["Los dos leptones más duros",
+         "Los dos leptones más energéticos deben superar un umbral, por la forma en que el detector decide guardar el evento.",
+         "El primero siempre pide más que el segundo. Prueba 15 a 25 GeV para pT1 y 8 a 12 GeV para pT2.",
+         [["pT1 mínimo (GeV)", 0, 40, 1, "pt1"], ["pT2 mínimo (GeV)", 0, 40, 1, "pt2"]]],
+  pares: ["Emparejamiento en dos Z",
+          "Debe poderse formar dos pares de leptones del mismo tipo y carga opuesta (cada par viene de una Z).",
+          "Tampoco tiene valor: solo actívalo.", []],
+  mz1: ["Masa de la primera Z",
+        "Z1 es la Z con masa más cercana a 91 GeV, así que debe estar en una ventana alrededor de ese valor.",
+        "Mueve el mínimo hacia arriba (entre 30 y 50 GeV) y deja el máximo por arriba de 91.",
+        [["Masa mínima de Z1 (GeV)", 0, 180, 1, "mz1_min"], ["Masa máxima de Z1 (GeV)", 0, 180, 1, "mz1_max"]]],
+  mz2: ["Masa de la segunda Z",
+        "Como el Higgs pesa menos que dos Z, la segunda Z es virtual y puede tener una masa menor.",
+        "El mínimo es mucho más bajo que el de Z1. Prueba entre 8 y 15 GeV.",
+        [["Masa mínima de Z2 (GeV)", 0, 180, 1, "mz2_min"], ["Masa máxima de Z2 (GeV)", 0, 180, 1, "mz2_max"]]],
+  mll: ["Masa mínima de pares",
+        "Elimina eventos con pares de leptones de masa muy baja, que vienen de otras resonancias.",
+        "Es un valor pequeño. Prueba entre 2 y 8 GeV.",
+        [["mll mínima (GeV)", 0, 20, 0.5, "mll"]]],
+  m4l: ["Masa mínima de los 4 leptones",
+        "Se descartan masas demasiado bajas para ser un Higgs.",
+        "Está en el borde izquierdo de la gráfica.",
+        [["m4l mínima (GeV)", 70, 120, 1, "m4l_min"]]],
+};
+const IMAGEN_PASO = { eta: "eta_pt.png", ip: "impacto.png", iso: "aislamiento.png" };
+
+// ---------- utilidades de formato ----------
+const g = x => String(Number(x.toPrecision(6)));                 // como {:g} de Python
+const miles = (x, dec = 0) => x.toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const $ = id => document.getElementById(id);
+
+function etiqueta(clave, p) {
+  /* Texto de cada fila de la tabla cutflow, con los valores elegidos. */
+  return {
+    pt: `pT: e > ${g(p.pt_e)}, μ > ${g(p.pt_mu)} GeV`,
+    eta: `|η|: e < ${g(p.eta_e)}, μ < ${g(p.eta_mu)}`,
+    ip: `|dxy| < ${g(p.dxy)} cm y |dz| < ${g(p.dz)} cm`,
+    sip: `SIP3D < ${g(p.sip)}`,
+    iso: `Aislamiento < ${g(p.iso)}`,
+    carga: "Carga total = 0",
+    pt12: `pT1 > ${g(p.pt1)} y pT2 > ${g(p.pt2)} GeV`,
+    pares: "Existe emparejamiento Z+Z",
+    mz1: `mZ1 entre ${g(p.mz1_min)} y ${g(p.mz1_max)} GeV`,
+    mz2: `mZ2 entre ${g(p.mz2_min)} y ${g(p.mz2_max)} GeV`,
+    mll: `mll mínima > ${g(p.mll)} GeV`,
+    m4l: `m4l > ${g(p.m4l_min)} GeV`,
+  }[clave];
+}
+
+function tablaHTML(encabezados, filas, opciones = {}) {
+  /* filas: arreglo de arreglos. La primera celda de cada fila se dibuja como encabezado (como el índice de pandas). */
+  const num = opciones.num || [];
+  const cab = encabezados.map((h, j) => `<th${num.includes(j) ? ' class="num"' : ""}>${esc(h)}</th>`).join("");
+  const cuerpo = filas.map(f => "<tr>" + f.map((c, j) =>
+    j === 0 ? `<th>${esc(c)}</th>` : `<td${num.includes(j) ? ' class="num"' : ""}>${esc(c)}</td>`).join("") + "</tr>").join("");
+  return `<div class="tabla-wrap"><table class="${opciones.clase || ""}"><thead><tr>${cab}</tr></thead><tbody>${cuerpo}</tbody></table></div>`;
+}
+const aviso = (tipo, html) => `<div class="aviso ${tipo}">${html}</div>`;
+const metrica = (etq, valor, delta) =>
+  `<div class="metrica"><div class="etiqueta">${etq}</div><div class="valor">${valor}</div>${delta ? `<span class="delta">${delta}</span>` : ""}</div>`;
+
+// =====================================================================================
+// 2. DATOS: lectura de la muestra reducida (una fila por evento)
+// =====================================================================================
+let D = null;   // { n, columnas numéricas como Float64Array, muestra: Uint8Array (índice en COLUMNAS) }
+
+async function cargarMuestra() {
+  /* Descarga el .csv.gz, lo descomprime en el navegador y lo guarda en arreglos por columna. */
+  const r = await fetch(RUTA_MUESTRA);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const bytes = new Uint8Array(await r.arrayBuffer());
+  let texto;
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {          // es gzip: lo descomprimimos
+    const flujo = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    texto = await new Response(flujo).text();
+  } else {                                                // el servidor ya lo descomprimió
+    texto = new TextDecoder().decode(bytes);
+  }
+  const lineas = texto.split("\n").filter(l => l.length);
+  const cab = lineas[0].trim().split(",");
+  const n = lineas.length - 1;
+  const datos = { n, cab };
+  cab.forEach(c => { if (c !== "muestra") datos[c] = new Float64Array(n); });
+  datos.muestra = new Uint8Array(n);
+  const codigo = Object.fromEntries(COLUMNAS.map((c, i) => [c, i]));
+  for (let i = 0; i < n; i++) {
+    const v = lineas[i + 1].trim().split(",");
+    for (let j = 0; j < cab.length; j++) {
+      const c = cab[j];
+      if (c === "muestra") datos.muestra[i] = codigo[v[j]] ?? 255;
+      else datos[c][i] = v[j] === "" ? NaN : +v[j];        // celda vacía = NaN (igual que pandas)
+    }
+  }
+  return datos;
+}
+
+function mascaras(p) {
+  /* Para cada corte devuelve un arreglo 1/0 por evento (1 = el evento pasa).
+     Las comparaciones con NaN dan "falso", igual que en pandas. */
+  const n = D.n, m = {};
+  ORDEN.forEach(k => m[k] = new Uint8Array(n));
+  for (let i = 0; i < n; i++) {
+    m.pt[i] = D.pt_e_min[i] > p.pt_e && D.pt_mu_min[i] > p.pt_mu;
+    m.eta[i] = D.eta_e_max[i] < p.eta_e && D.eta_mu_max[i] < p.eta_mu;
+    m.ip[i] = D.dxy_max[i] < p.dxy && D.dz_max[i] < p.dz;
+    m.sip[i] = D.sip_max[i] < p.sip;
+    m.iso[i] = D.iso_max[i] < p.iso;
+    m.carga[i] = D.q_sum[i] === 0;
+    m.pt12[i] = D.pt1[i] > p.pt1 && D.pt2[i] > p.pt2;
+    m.pares[i] = !Number.isNaN(D.mz1[i]);
+    m.mz1[i] = D.mz1[i] > p.mz1_min && D.mz1[i] < p.mz1_max;
+    m.mz2[i] = D.mz2[i] > p.mz2_min && D.mz2[i] < p.mz2_max;
+    m.mll[i] = D.mll_min[i] > p.mll;
+    m.m4l[i] = D.m4l[i] > p.m4l_min;
+  }
+  return m;
+}
+
+function mascaraTotal(activos, p) {
+  /* 1/0 por evento: pasa TODOS los cortes activos (aplicados de forma acumulada). */
+  const m = mascaras(p), ok = new Uint8Array(D.n).fill(1);
+  for (const k of ORDEN) if (activos.includes(k)) { const mk = m[k]; for (let i = 0; i < D.n; i++) ok[i] &= mk[i]; }
+  return ok;
+}
+
+function sumasPorMuestra(ok) {
+  /* Eventos (ponderados en las simulaciones) que pasan, separados por muestra. */
+  const s = new Float64Array(COLUMNAS.length);
+  for (let i = 0; i < D.n; i++) if (ok[i] && D.muestra[i] < 5) s[D.muestra[i]] += D.peso[i];
+  return Array.from(s);
+}
+
+function parecido(okEst, okOfi) {
+  /* Qué tanto se parece la selección del estudiante a la oficial (0 a 1).
+     Índice de Jaccard ponderado: eventos que pasan AMBAS / eventos que pasan AL MENOS UNA.
+     Los datos pesan 1 y las simulaciones pesan su peso físico. */
+  let inter = 0, union = 0;
+  for (let i = 0; i < D.n; i++) {
+    const w = D.muestra[i] === 4 ? 1 : D.peso[i];
+    if (okEst[i] || okOfi[i]) union += w;
+    if (okEst[i] && okOfi[i]) inter += w;
+  }
+  return union > 0 ? inter / union : 1;
+}
+
+function tablaCutflow(activos, p) {
+  /* Eventos (ponderados en las simulaciones) que sobreviven tras cada corte activo. */
+  const m = mascaras(p), ok = new Uint8Array(D.n).fill(1);
+  const filas = [["Muestra de partida (m4l entre 70 y 180 GeV)", ...sumasPorMuestra(ok)]];
+  for (const k of ORDEN) {
+    if (!activos.includes(k)) continue;
+    const mk = m[k];
+    for (let i = 0; i < D.n; i++) ok[i] &= mk[i];
+    filas.push([etiqueta(k, p), ...sumasPorMuestra(ok)]);
+  }
+  const fmt = filas.map(f => [f[0], ...f.slice(1, 5).map(x => miles(x, 2)), miles(f[5], 0)]);
+  return tablaHTML(["Corte", ...COLUMNAS], fmt, { num: [1, 2, 3, 4, 5] });
+}
+
+// =====================================================================================
+// 3. HISTOGRAMAS Y GRÁFICA AL ESTILO CMS (dibujada en SVG)
+// =====================================================================================
+function histogramas(ok) {
+  /* Histogramas de m4l: fondo ZZ (ponderado), Higgs (ponderado) y datos reales (conteo). */
+  const zz = new Float64Array(N_BINS), h = new Float64Array(N_BINS), dat = new Float64Array(N_BINS);
+  for (let i = 0; i < D.n; i++) {
+    if (!ok[i]) continue;
+    const x = D.m4l[i];
+    if (!(x >= BIN_MIN && x <= BIN_MAX)) continue;
+    const b = Math.min(Math.floor((x - BIN_MIN) / ANCHO_BIN), N_BINS - 1);
+    const s = D.muestra[i];
+    if (s === 0) h[b] += D.peso[i];
+    else if (s <= 3) zz[b] += D.peso[i];
+    else if (s === 4) dat[b] += 1;
+  }
+  const suma = a => a.reduce((x, y) => x + y, 0);
+  return { zz, h, dat, sumZZ: suma(zz), sumH: suma(h), sumDat: suma(dat) };
+}
+
+function marcasY(maximo) {
+  /* Valores "bonitos" para el eje Y (0, 2, 4, … o 0, 5, 10, …). */
+  const bruto = maximo / 5, pot = Math.pow(10, Math.floor(Math.log10(bruto))), r = bruto / pot;
+  const paso = (r < 1.5 ? 1 : r < 3 ? 2 : r < 7 ? 5 : 10) * pot;
+  const marcas = [];
+  for (let v = 0; v <= maximo + 1e-9; v += paso) marcas.push(+v.toPrecision(10));
+  return marcas;
+}
+
+function figura(ok, titulo) {
+  /* Gráfica al estilo CMS Open Data: ZZ azul, ZZ+Higgs línea roja y datos como puntos con error de Poisson. */
+  const H = histogramas(ok);
+  const W = 650, A = 480, izq = 70, der = 14, arr = 38, abj = 62;
+  const anchoP = W - izq - der, altoP = A - arr - abj;
+  let tope = 1e-9;
+  for (let b = 0; b < N_BINS; b++) tope = Math.max(tope, H.zz[b] + H.h[b], H.dat[b] + Math.sqrt(H.dat[b]));
+  const ymax = tope * 1.3;                                      // cada gráfica ajusta su eje Y
+  const X = x => izq + (x - BIN_MIN) / (BIN_MAX - BIN_MIN) * anchoP;
+  const Y = y => arr + altoP - y / ymax * altoP;
+  const borde = b => BIN_MIN + b * ANCHO_BIN;
+
+  // escalones (como plt.stairs)
+  const escalones = vals => {
+    let d = `M${X(BIN_MIN)},${Y(0)}`;
+    for (let b = 0; b < N_BINS; b++) d += ` L${X(borde(b))},${Y(vals[b])} L${X(borde(b + 1))},${Y(vals[b])}`;
+    return d + ` L${X(BIN_MAX)},${Y(0)}`;
+  };
+  const total = H.zz.map((v, b) => v + H.h[b]);
+  let s = `<svg viewBox="0 0 ${W} ${A}" xmlns="http://www.w3.org/2000/svg" font-family="DejaVu Sans, Arial, sans-serif" font-size="16">`;
+  s += `<text x="${izq + anchoP / 2}" y="24" text-anchor="middle" font-size="18">${esc(titulo)}</text>`;
+  s += `<path d="${escalones(H.zz)} Z" fill="#9ecae1" stroke="black" stroke-width="1.2"/>`;
+  s += `<path d="${escalones(total)}" fill="none" stroke="red" stroke-width="2"/>`;
+  // datos con barras de error √N
+  for (let b = 0; b < N_BINS; b++) {
+    const n = H.dat[b];
+    if (n <= 0) continue;
+    const cx = X(borde(b) + ANCHO_BIN / 2), e = Math.sqrt(n);
+    s += `<line x1="${cx}" y1="${Y(n - e)}" x2="${cx}" y2="${Y(n + e)}" stroke="black" stroke-width="1.3"/>`;
+    s += `<circle cx="${cx}" cy="${Y(n)}" r="3.6" fill="black"/>`;
+  }
+  // ejes y marcas
+  s += `<rect x="${izq}" y="${arr}" width="${anchoP}" height="${altoP}" fill="none" stroke="black" stroke-width="1"/>`;
+  for (let x = 80; x <= 180; x += 20)
+    s += `<line x1="${X(x)}" y1="${arr + altoP}" x2="${X(x)}" y2="${arr + altoP + 5}" stroke="black"/>` +
+         `<text x="${X(x)}" y="${arr + altoP + 22}" text-anchor="middle">${x}</text>`;
+  for (const v of marcasY(ymax)) {
+    if (v > ymax) continue;
+    s += `<line x1="${izq - 5}" y1="${Y(v)}" x2="${izq}" y2="${Y(v)}" stroke="black"/>` +
+         `<text x="${izq - 8}" y="${Y(v) + 4}" text-anchor="end">${g(v)}</text>`;
+  }
+  s += `<text x="${izq + anchoP / 2}" y="${A - 12}" text-anchor="middle" font-size="17">Mass 4 leptons / GeV</text>`;
+  s += `<text transform="translate(20,${arr + altoP / 2}) rotate(-90)" text-anchor="middle" font-size="17">N_Events</text>`;
+  // leyenda (arriba a la derecha)
+  const lx = izq + anchoP - 290, ly = arr + 18;
+  s += `<line x1="${lx}" y1="${ly}" x2="${lx + 22}" y2="${ly}" stroke="red" stroke-width="2"/>` +
+       `<text x="${lx + 30}" y="${ly + 4}" font-size="14">ZZ + Higgs (m<tspan font-size="10" dy="3">H</tspan><tspan dy="-3"> = 125 GeV)</tspan></text>`;
+  s += `<rect x="${lx}" y="${ly + 15}" width="22" height="12" fill="#9ecae1" stroke="black"/>` +
+       `<text x="${lx + 30}" y="${ly + 26}" font-size="14">ZZ (simulación)</text>`;
+  s += `<line x1="${lx + 11}" y1="${ly + 37}" x2="${lx + 11}" y2="${ly + 51}" stroke="black" stroke-width="1.3"/>` +
+       `<circle cx="${lx + 11}" cy="${ly + 44}" r="3.6"/>` +
+       `<text x="${lx + 30}" y="${ly + 49}" font-size="14">Datos CMS 2012 (${H.sumDat} eventos)</text>`;
+  return { svg: s + "</svg>", H };
+}
+
+function avisoSinMuestra(err) {
+  let txt = "No encuentro <code>web_data/muestra_eventos.csv.gz</code>. Genera el archivo con " +
+            "<code>python scripts/preparar_muestra.py</code> y súbelo al repositorio.";
+  if (location.protocol === "file:")
+    txt += "<br>Abriste la página con doble clic: el navegador no deja leer archivos así. En la carpeta del " +
+           "repositorio ejecuta <code>python -m http.server 8000</code> y entra a <code>http://localhost:8000</code>.";
+  else if (err) txt += `<br><span class="caption">Detalle: ${esc(err.message || err)}</span>`;
+  return aviso("error", txt);
+}
+
+// =====================================================================================
+// 4. TUTORIAL DE CORTES (estado de los controles)
+// =====================================================================================
+const estado = { p: { ...LOOSE }, on: Object.fromEntries(ORDEN.map(k => [k, false])) };
+let okOficial = null, metaFig = null, metaN = 0;
+const activos = () => ORDEN.filter(k => estado.on[k]);
+
+function tablaOficial() {
+  /* Tabla con los cortes oficiales, el valor y su razón física. */
+  const o = OFICIAL;
+  const valores = {
+    pt: `Electrones > ${g(o.pt_e)} GeV; muones > ${g(o.pt_mu)} GeV`,
+    eta: `Electrones < ${g(o.eta_e)}; muones < ${g(o.eta_mu)}`,
+    ip: `|dxy| < ${g(o.dxy)} cm y |dz| < ${g(o.dz)} cm`,
+    sip: `SIP3D < ${g(o.sip)}`, iso: `Aislamiento < ${g(o.iso)}`, carga: "Suma de cargas = 0",
+    pt12: `pT1 > ${g(o.pt1)} GeV y pT2 > ${g(o.pt2)} GeV`, pares: "Debe existir el emparejamiento Z + Z",
+    mz1: `${g(o.mz1_min)} < mZ1 < ${g(o.mz1_max)} GeV`, mz2: `${g(o.mz2_min)} < mZ2 < ${g(o.mz2_max)} GeV`,
+    mll: `mll mínima > ${g(o.mll)} GeV`, m4l: `m4l > ${g(o.m4l_min)} GeV`,
+  };
+  return tablaHTML(["Paso", "Corte", "Valor oficial", "¿Por qué?"],
+                   ORDEN.map((c, i) => [i + 1, PASOS[c][0], valores[c], PASOS[c][1]]));
+}
+
+function construirPasos() {
+  /* Crea un desplegable por corte, con su casilla "Aplicar" y sus deslizadores. */
+  $("pasos").innerHTML = ORDEN.map((clave, i) => {
+    const [titulo, explicacion, pista, controles] = PASOS[clave];
+    const img = IMAGEN_PASO[clave] ? `<figure><img src="imagenes/${IMAGEN_PASO[clave]}" alt="" style="width:460px"></figure>` : "";
+    const ctrls = controles.map(([txt, mn, mx, paso, k]) =>
+      `<div class="control"><label>${esc(txt)} <output data-val="${k}"></output></label>
+       <input type="range" data-k="${k}" min="${mn}" max="${mx}" step="${paso}"></div>`).join("");
+    return `<details data-paso="${clave}"${i === 0 ? " open" : ""}><summary>Paso ${i + 1}: ${esc(titulo)}<span class="ok"></span></summary>
+      <div class="contenido"><p class="caption">${esc(explicacion)}</p>${img}
+      <label><input type="checkbox" data-on="${clave}"> Aplicar este corte</label>${ctrls}
+      <p class="caption">💡 Pista: ${esc(pista)}</p></div></details>`;
+  }).join("");
+  $("pasos").addEventListener("input", e => {
+    const t = e.target;
+    if (t.dataset.k) estado.p[t.dataset.k] = +t.value;
+    if (t.dataset.on) estado.on[t.dataset.on] = t.checked;
+    sincronizarControles(); programarRender();
+  });
+}
+
+function sincronizarControles() {
+  /* Copia el estado a los controles (después de "Empezar de nuevo" o "Mostrar la respuesta"). */
+  document.querySelectorAll("#pasos input[data-k]").forEach(el => {
+    el.value = estado.p[el.dataset.k];
+    document.querySelector(`output[data-val="${el.dataset.k}"]`).textContent = g(+el.value);
+  });
+  document.querySelectorAll("#pasos input[data-on]").forEach(el => {
+    el.checked = estado.on[el.dataset.on];
+    el.closest("details").querySelector(".ok").textContent = el.checked ? " ✅" : "";
+  });
+}
+
+let pendiente = false;
+function programarRender() {
+  if (pendiente || !D) return;
+  pendiente = true;
+  requestAnimationFrame(() => { pendiente = false; renderTutorial(); renderCutflow(); });
+}
+
+function renderTutorial() {
+  const act = activos();
+  const ok = mascaraTotal(act, estado.p);
+  const { svg, H } = figura(ok, "Tus cortes");
+  const j = parecido(ok, okOficial);
+  let nDat = 0;
+  for (let i = 0; i < D.n; i++) if (ok[i] && D.muestra[i] === 4) nDat++;
+  let msg;
+  if (!act.length) msg = aviso("info", "Todavía no has aplicado ningún corte. Empieza con el Paso 1: ábrelo, activa el corte y mueve los controles.");
+  else if (j >= 0.95) msg = aviso("success", "¡Lo lograste! Tu selección es prácticamente la oficial. Compara tus valores con la tabla de cortes oficiales.");
+  else if (nDat > metaN * 1.1) msg = aviso("info", `Todavía quedan ${nDat - metaN} eventos de datos más que en la gráfica oficial. Activa más cortes o hazlos más estrictos.`);
+  else if (nDat < metaN * 0.9) msg = aviso("warning", "Estás eliminando más eventos que la selección oficial. Afloja algún corte.");
+  else msg = aviso("info", "Vas muy cerca: el número de eventos es parecido, pero no son exactamente los mismos. Revisa tus valores contra la tabla.");
+  const pct = Math.min(Math.max(j, 0), 1) * 100;
+  const dif = nDat - metaN;
+  $("tutorial-graficas").innerHTML = `
+    <div class="cols cols-graf"><div class="grafica">${svg}</div><div class="grafica">${metaFig}</div></div>
+    <div class="progreso">Parecido con la selección oficial: ${pct.toFixed(0)} %<div class="barra"><div style="width:${pct}%"></div></div></div>
+    <div class="cols cols-3">
+      ${metrica("Datos que sobreviven", nDat, `${dif >= 0 ? "+" : ""}${dif} vs oficial`)}
+      ${metrica("Fondo ZZ esperado", H.sumZZ.toFixed(1))}
+      ${metrica("Higgs esperado", H.sumH.toFixed(1))}
+    </div>${msg}
+    <p class="caption">Has activado ${act.length} de ${ORDEN.length} cortes.</p>`;
+}
+
+function renderCutflow() {
+  $("cutflow").innerHTML = `
+    <h3>Con los cortes oficiales</h3>
+    <p>Eventos que sobreviven después de aplicar cada filtro, en orden. Para las simulaciones
+      son eventos esperados a 11.58 fb⁻¹.</p>
+    ${tablaCutflowOficial}
+    <p class="caption">La tabla parte de una muestra que ya incluye una selección muy suelta (m4l entre 70 y
+      180 GeV), por eso las primeras filas pueden ser menores que en el análisis completo.</p>
+    <h3>Con los cortes que elegiste en el tutorial</h3>
+    ${tablaCutflow(activos(), estado.p)}`;
+}
+let tablaCutflowOficial = "";
+
+function renderResultadoFinal() {
+  const { svg, H } = figura(okOficial, "Todos los cortes oficiales aplicados");
+  let nDat = 0, espZZ = 0, espH = 0;
+  for (let i = 0; i < D.n; i++) {
+    if (!okOficial[i] || !(D.m4l[i] > 120 && D.m4l[i] < 130)) continue;
+    const s = D.muestra[i];
+    if (s === 4) nDat++; else if (s === 0) espH += D.peso[i]; else if (s <= 3) espZZ += D.peso[i];
+  }
+  $("resultado-final").innerHTML = `
+    <div class="grafica" style="max-width:720px">${svg}</div>
+    <div class="cols cols-3">
+      ${metrica("Eventos de datos en la gráfica", H.sumDat)}
+      ${metrica("Fondo ZZ esperado", H.sumZZ.toFixed(1))}
+      ${metrica("Higgs esperado", H.sumH.toFixed(1))}
+    </div>
+    <p>Cerca de 125 GeV (entre 120 y 130 GeV) hay <strong>${nDat}</strong> eventos de datos, y la
+      simulación espera <strong>${espZZ.toFixed(1)}</strong> de fondo ZZ y <strong>${espH.toFixed(1)}</strong> del Higgs.</p>
+    <p class="caption">¿Es suficiente para hablar de un descubrimiento? Recuerda la incertidumbre √N y que
+      solo usamos una parte de los datos y un fondo incompleto.</p>`;
+}
+
+function renderMuestraEjemplo() {
+  /* 8 eventos al azar de la muestra reducida. */
+  const idx = [];
+  while (idx.length < 8) { const i = Math.floor(Math.random() * D.n); if (!idx.includes(i)) idx.push(i); }
+  const filas = idx.map((i, r) => [r, ...D.cab.map(c => c === "muestra" ? COLUMNAS[D.muestra[i]]
+                                     : Number.isNaN(D[c][i]) ? "NaN" : g(D[c][i]))]);
+  $("muestra-ejemplo").innerHTML = "<p><strong>Muestra reducida que usa esta página</strong> (una fila por evento, ya resumida):</p>" +
+    tablaHTML(["", ...D.cab], filas, { clase: "compacta", num: D.cab.map((c, j) => c === "muestra" ? -1 : j + 1) });
+}
+
+let cargaIniciada = false;
+async function iniciarAnalisis() {
+  /* Se ejecuta la primera vez que se abre "Analiza los datos". */
+  if (cargaIniciada) return;
+  cargaIniciada = true;
+  $("tabla-oficial").innerHTML = tablaOficial();
+  construirPasos(); sincronizarControles();
+  try {
+    D = await cargarMuestra();
+  } catch (err) {
+    $("estado-carga").outerHTML = avisoSinMuestra(err);
+    ["tutorial-graficas", "cutflow", "resultado-final"].forEach(id => $(id).innerHTML = avisoSinMuestra(err));
+    return;
+  }
+  $("estado-carga").remove();
+  okOficial = mascaraTotal(ORDEN, OFICIAL);
+  const meta = figura(okOficial, "Meta: cortes oficiales");
+  metaFig = meta.svg; metaN = meta.H.sumDat;
+  tablaCutflowOficial = tablaCutflow(ORDEN, OFICIAL);
+  renderMuestraEjemplo(); renderTutorial(); renderCutflow(); renderResultadoFinal();
+}
+
+$("btn-reiniciar").onclick = () => {
+  Object.assign(estado.p, LOOSE); ORDEN.forEach(k => estado.on[k] = false);
+  sincronizarControles(); programarRender();
+};
+$("btn-respuesta").onclick = () => {
+  Object.assign(estado.p, OFICIAL); ORDEN.forEach(k => estado.on[k] = true);
+  sincronizarControles(); programarRender();
+};
+
+// =====================================================================================
+// 5. SIMULACIONES MONTE CARLO: tabla de pesos y demostración de π
+// =====================================================================================
+const LUMI_PB = 11580.0;
+const SIMULACIONES = [  // nombre, proceso, sección eficaz σ [pb], N de eventos generados, factor k
+  ["Higgs", "H → ZZ → 4ℓ", 0.0065, 299973, 1.0],
+  ["ZZ→4μ", "ZZ → 4μ", 0.077, 1499064, 1.386],
+  ["ZZ→4e", "ZZ → 4e", 0.077, 1499093, 1.386],
+  ["ZZ→2e2μ", "ZZ → 2e2μ", 0.18, 1497445, 1.386],
+];
+$("tabla-simulaciones").innerHTML = tablaHTML(
+  ["Muestra", "Proceso", "σ (pb)", "k", "N generados", "Eventos esperados (σ·L·k)", "Peso por evento"],
+  SIMULACIONES.map(([nom, proc, xs, ngen, k]) => {
+    const esp = xs * LUMI_PB * k;
+    return [nom, proc, g(xs), g(k), miles(ngen), miles(esp, 1), (esp / ngen).toFixed(6)];
+  }), { num: [2, 3, 4, 5, 6] }).replace(/^<div class="tabla-wrap">|<\/div>$/g, "");
+
+function rng(semilla) {
+  /* Generador de números aleatorios con semilla (mulberry32): mismos números cada vez. */
+  let a = semilla >>> 0;
+  const u = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1);
+                    t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  return {
+    random: u,
+    uniforme: (a, b) => a + (b - a) * u(),
+    normal: (mu, s) => mu + s * Math.sqrt(-2 * Math.log(1 - u())) * Math.cos(2 * Math.PI * u()),
+    exponencial: esc => -esc * Math.log(1 - u()),
+    elegir: arr => arr[Math.floor(u() * arr.length)],
+  };
+}
+
+function demoPi() {
+  /* Mini demostración del método Monte Carlo: estimar π con puntos aleatorios. */
+  const n = +$("pi-n").value; $("pi-n-val").textContent = n;
+  const r = rng(7), cv = $("pi-canvas"), c = cv.getContext("2d"), L = cv.width, m = 40, lado = L - 2 * m;
+  c.clearRect(0, 0, L, L);
+  let dentro = 0;
+  for (let i = 0; i < n; i++) {
+    const x = r.random(), y = r.random(), d = x * x + y * y <= 1;
+    if (d) dentro++;
+    c.fillStyle = d ? "#3B6FB6" : "#BBBBB5";
+    c.beginPath(); c.arc(m + x * lado, m + (1 - y) * lado, 3, 0, 2 * Math.PI); c.fill();
+  }
+  c.strokeStyle = "#C8553D"; c.lineWidth = 3;
+  c.beginPath(); c.arc(m, m + lado, lado, -Math.PI / 2, 0); c.stroke();
+  c.strokeStyle = "#333"; c.lineWidth = 1.5; c.strokeRect(m, m, lado, lado);
+  c.fillStyle = "#333"; c.font = "26px sans-serif";
+  c.fillText("0", m - 8, L - 8); c.fillText("1", L - m - 8, L - 8); c.fillText("1", 8, m + 9);
+  const est = 4 * dentro / n, dif = est - Math.PI;
+  $("pi-valor").textContent = est.toFixed(4);
+  $("pi-delta").textContent = `${dif >= 0 ? "+" : ""}${dif.toFixed(4)} vs π real`;
+}
+$("pi-n").addEventListener("input", demoPi);
+
+// =====================================================================================
+// 6. EJERCICIO DE MASA INVARIANTE
+// =====================================================================================
+const OPCIONES_BOSON = {
+  jpsi: "Partícula J/ψ (≈ 3.1 GeV)", z: "Bosón Z (≈ 91 GeV)",
+  higgs: "Bosón de Higgs (≈ 125 GeV)", zz: "Un par de bosones Z (más de 182 GeV)",
+};
+const EXPLICACION_RESPUESTA = {
+  jpsi: "Una masa cercana a 3.1 GeV corresponde a la partícula J/ψ, formada por un quark charm y su antiquark. Se desintegra en un par de leptones de carga opuesta.",
+  z: "Una masa cercana a 91 GeV corresponde al bosón Z, que se desintegra en un par de leptones de carga opuesta.",
+  higgs: "Cuatro leptones con masa invariante cercana a 125 GeV son la firma del Higgs: H → Z + Z* → 4 leptones (una de las dos Z es virtual).",
+  zz: "Cuatro leptones con masa mayor a 182 GeV (el doble de la masa de una Z) pueden venir de dos bosones Z reales, un proceso de fondo del análisis: ZZ → 4 leptones.",
+};
+
+function boost(p, beta) {
+  /* Aplica un "boost" de Lorentz con velocidad beta (vector 3D, en unidades de c) a cuadrivectores [E,px,py,pz]. */
+  const b2 = beta[0] ** 2 + beta[1] ** 2 + beta[2] ** 2;
+  if (b2 === 0) return p;
+  const gamma = 1 / Math.sqrt(1 - b2);
+  return p.map(v => {
+    const bp = v[1] * beta[0] + v[2] * beta[1] + v[3] * beta[2];
+    const f = (gamma - 1) / b2 * bp + gamma * v[0];
+    return [gamma * (v[0] + bp), v[1] + f * beta[0], v[2] + f * beta[1], v[3] + f * beta[2]];
+  });
+}
+
+function desintegrar(P, m1, m2, r) {
+  /* Desintegra una partícula con cuadrivector P en dos de masas m1 y m2 (dirección al azar en su reposo). */
+  const M = Math.sqrt(P[0] ** 2 - P[1] ** 2 - P[2] ** 2 - P[3] ** 2);
+  const ps = Math.sqrt((M ** 2 - (m1 + m2) ** 2) * (M ** 2 - (m1 - m2) ** 2)) / (2 * M);
+  const c = r.uniforme(-1, 1), fi = r.uniforme(0, 2 * Math.PI), s = Math.sqrt(1 - c * c);
+  const d = [s * Math.cos(fi), s * Math.sin(fi), c];
+  const hijas = [[Math.sqrt(ps ** 2 + m1 ** 2), ps * d[0], ps * d[1], ps * d[2]],
+                 [Math.sqrt(ps ** 2 + m2 ** 2), -ps * d[0], -ps * d[1], -ps * d[2]]];
+  return boost(hijas, [P[1] / P[0], P[2] / P[0], P[3] / P[0]]);
+}
+
+function particula(M, r, ptEscala) {
+  /* Cuadrivector de una partícula de masa M con pT, rapidez y ángulo φ al azar. */
+  const pt = r.exponencial(ptEscala) + 3, y = r.normal(0, 0.8), fi = r.uniforme(-Math.PI, Math.PI);
+  const mt = Math.sqrt(M * M + pt * pt);
+  return [mt * Math.cosh(y), pt * Math.cos(fi), pt * Math.sin(fi), mt * Math.sinh(y)];
+}
+
+function componentes(leptones) {
+  /* Componentes (px, py, pz, E) de cada leptón, tratándolos sin masa: E = |p|. */
+  return leptones.map(l => {
+    const px = l.pt * Math.cos(l.phi), py = l.pt * Math.sin(l.phi), pz = l.pt * Math.sinh(l.eta);
+    return { px, py, pz, E: Math.sqrt(px * px + py * py + pz * pz) };
+  });
+}
+function masaDeLeptones(leptones) {
+  /* Masa invariante de un grupo de leptones sin masa (suma de cuadrivectores). */
+  const c = componentes(leptones), S = k => c.reduce((a, v) => a + v[k], 0);
+  return Math.sqrt(Math.max(S("E") ** 2 - S("px") ** 2 - S("py") ** 2 - S("pz") ** 2, 0));
+}
+
+function generarEjercicio(nivel, semilla) {
+  /* Crea un "evento" con 2 o 4 leptones (sin masa) a partir de una partícula conocida.
+     La masa correcta se calcula con los mismos números redondeados que ve el estudiante. */
+  const r = rng(semilla * 7919 + nivel);
+  let caso, pares, sabores;
+  if (nivel === 2) {
+    caso = r.elegir(["z", "jpsi"]);
+    const M = caso === "z" ? r.normal(91.19, 2.0) : r.normal(3.097, 0.03);
+    const padre = particula(M, r, caso === "z" ? 18 : 14);
+    pares = [desintegrar(padre, 0, 0, r)];
+    sabores = [caso === "z" ? r.elegir(["e", "μ"]) : "μ"];
+  } else {
+    caso = r.elegir(["higgs", "zz"]);
+    let M, mz1, mz2;
+    if (caso === "higgs") {
+      M = r.normal(125, 1); mz1 = r.normal(91.19, 2); mz2 = r.uniforme(12, Math.min(30, M - mz1 - 1));
+    } else {
+      M = r.uniforme(190, 260); mz1 = r.normal(91.19, 2); mz2 = r.normal(91.19, 2);
+    }
+    const padre = particula(M, r, 25);
+    const [z1, z2] = desintegrar(padre, mz1, mz2, r);
+    pares = [desintegrar(z1, 0, 0, r), desintegrar(z2, 0, 0, r)];
+    const tipo = r.elegir(["4μ", "4e", "2e2μ"]);
+    sabores = { "4μ": ["μ", "μ"], "4e": ["e", "e"], "2e2μ": ["e", "μ"] }[tipo];
+  }
+  const leptones = [];
+  pares.forEach((par, ip) => {
+    const q = r.elegir([-1, 1]);
+    par.forEach((v, k) => {
+      const pt = Math.hypot(v[1], v[2]);
+      leptones.push({ tipo: sabores[ip], carga: k === 0 ? q : -q, pt: +pt.toFixed(2),
+                      eta: +Math.asinh(v[3] / pt).toFixed(3), phi: +Math.atan2(v[2], v[1]).toFixed(3) });
+    });
+  });
+  leptones.sort((a, b) => b.pt - a.pt);
+  return { caso, leptones, masa: masaDeLeptones(leptones) };
+}
+
+const ej = { semilla: 1, nivel: 2 };
+function renderEjercicio() {
+  const e = generarEjercicio(ej.nivel, ej.semilla), L = e.leptones;
+  const tabla = tablaHTML(["Leptón", "Tipo", "Carga", "pT (GeV)", "η", "φ (rad)"],
+    L.map((l, i) => [i + 1, l.tipo, (l.carga > 0 ? "+" : "−") + "1", l.pt.toFixed(2), l.eta.toFixed(3), l.phi.toFixed(3)]),
+    { num: [3, 4, 5] });
+  const lista = k => "[" + L.map(l => l[k]).join(", ") + "]";
+  const pista4 = ej.nivel === 2
+    ? "<p>Solo debes calcular Δη = η₁ − η₂ y Δφ = φ₁ − φ₂, y sustituir.</p>"
+    : `<p>Para cuatro leptones, suma esa expresión sobre <strong>todos los pares</strong> posibles (hay 6):</p>
+       <div class="formula"><i>m</i><sup>2</sup> = Σ<sub><i>i</i>&lt;<i>j</i></sub> 2 <i>p</i><sub>T<i>i</i></sub> <i>p</i><sub>T<i>j</i></sub> [cosh(<i>η<sub>i</sub></i> − <i>η<sub>j</sub></i>) − cos(<i>φ<sub>i</sub></i> − <i>φ<sub>j</sub></i>)]</div>
+       <p>Con cuatro leptones conviene usar una hoja de cálculo o Python. Por ejemplo:</p>
+       <pre>import numpy as np
+pt  = np.array(${lista("pt")})
+eta = np.array(${lista("eta")})
+phi = np.array(${lista("phi")})
+px, py, pz = pt*np.cos(phi), pt*np.sin(phi), pt*np.sinh(eta)
+E = np.sqrt(px**2 + py**2 + pz**2)
+m = np.sqrt(E.sum()**2 - px.sum()**2 - py.sum()**2 - pz.sum()**2)
+print(m)</pre>`;
+  const c = componentes(L), S = k => c.reduce((a, v) => a + v[k], 0);
+  const sol = tablaHTML(["", "px", "py", "pz", "E"],
+    c.map((v, i) => [`Leptón ${i + 1}`, v.px.toFixed(2), v.py.toFixed(2), v.pz.toFixed(2), v.E.toFixed(2)]), { num: [1, 2, 3, 4] });
+  $("ejercicio").innerHTML = `${tabla}
+    <details><summary>📐 ¿Qué son pT, η y φ? (esquema)</summary><div class="contenido">
+      <figure><img src="imagenes/coordenadas.png" alt="" style="width:760px"><figcaption>Coordenadas del detector: el eje z es el haz de protones.</figcaption></figure>
+      <p><strong>pT</strong> es la parte del momento perpendicular al haz, <strong>φ</strong> es el ángulo alrededor del haz y
+        <strong>η</strong> (pseudorapidez) indica qué tan cerca del haz va la partícula (η = −ln tan(θ/2), con θ el
+        ángulo respecto al eje z).</p></div></details>
+    <details><summary>💡 Pista: cómo calcular la masa invariante</summary><div class="contenido">
+      <p>Para cada leptón calcula sus componentes (como no tiene masa, su energía es igual a su momento):</p>
+      <div class="formula"><i>p<sub>x</sub></i> = <i>p</i><sub>T</sub> cos <i>φ</i>, &nbsp; <i>p<sub>y</sub></i> = <i>p</i><sub>T</sub> sin <i>φ</i>, &nbsp;
+        <i>p<sub>z</sub></i> = <i>p</i><sub>T</sub> sinh <i>η</i>, &nbsp; <i>E</i> = √(<i>p<sub>x</sub></i><sup>2</sup> + <i>p<sub>y</sub></i><sup>2</sup> + <i>p<sub>z</sub></i><sup>2</sup>)</div>
+      <p>Suma las componentes de todos los leptones y calcula:</p>
+      <div class="formula"><i>m</i> = √[ (Σ<i>E</i>)<sup>2</sup> − (Σ<i>p<sub>x</sub></i>)<sup>2</sup> − (Σ<i>p<sub>y</sub></i>)<sup>2</sup> − (Σ<i>p<sub>z</sub></i>)<sup>2</sup> ]</div>
+      <p><strong>Fórmula con los ángulos</strong> (equivalente, sin calcular componentes). Para un par de leptones sin masa:</p>
+      <div class="formula"><i>m</i><sup>2</sup> = 2 <i>p</i><sub>T1</sub> <i>p</i><sub>T2</sub> [cosh(<i>η</i><sub>1</sub> − <i>η</i><sub>2</sub>) − cos(<i>φ</i><sub>1</sub> − <i>φ</i><sub>2</sub>)]</div>
+      ${pista4}</div></details>
+    <div class="control"><label style="justify-content:flex-start">Tu masa invariante (GeV)</label>
+      <input type="number" id="ej-masa" min="0" step="0.1" value="0.00"></div>
+    <div class="pregunta"><p>¿A qué partícula corresponde?</p><div class="opciones">
+      ${Object.entries(OPCIONES_BOSON).map(([k, t]) => `<label><input type="radio" name="ej-resp" value="${k}"> ${t}</label>`).join("")}
+    </div></div>
+    <button class="btn" id="ej-revisar">Revisar mi respuesta</button>
+    <div id="ej-resultado"></div>
+    <details><summary>✅ Ver la solución paso a paso</summary><div class="contenido">${sol}
+      <p>Sumas: ΣE = ${S("E").toFixed(2)}, Σpx = ${S("px").toFixed(2)}, Σpy = ${S("py").toFixed(2)}, Σpz = ${S("pz").toFixed(2)} (en GeV).</p>
+      <p><strong>Masa invariante: m ≈ ${e.masa.toFixed(2)} GeV</strong></p>
+      <p><strong>Respuesta: ${OPCIONES_BOSON[e.caso]}.</strong> ${EXPLICACION_RESPUESTA[e.caso]}</p></div></details>`;
+  $("ej-revisar").onclick = () => {
+    const masa = +$("ej-masa").value, sel = document.querySelector('input[name="ej-resp"]:checked');
+    let out;
+    if (!(masa > 0) || !sel) out = aviso("warning", "Escribe tu masa invariante y elige una partícula.");
+    else {
+      out = Math.abs(masa - e.masa) <= 0.03 * e.masa
+        ? aviso("success", `Tu cálculo es correcto: m ≈ ${e.masa.toFixed(2)} GeV.`)
+        : aviso("error", "Tu masa no coincide con el resultado. Revisa las fórmulas de la pista y vuelve a intentarlo.");
+      out += sel.value === e.caso
+        ? aviso("success", "¡Identificaste la partícula! " + EXPLICACION_RESPUESTA[e.caso])
+        : aviso("error", "Esa no es la partícula. Compara tu masa con las masas de la lista de opciones.");
+    }
+    $("ej-resultado").innerHTML = out;
+  };
+}
+$("ej-nuevo").onclick = () => { ej.semilla++; renderEjercicio(); };
+document.querySelectorAll('input[name="ej-nivel"]').forEach(el => el.onchange = () => { ej.nivel = +el.value; renderEjercicio(); });
+
+// =====================================================================================
+// 7. GLOSARIO Y AUTOEVALUACIÓN
+// =====================================================================================
+const PREGUNTAS = [
+  ["¿Cuál de estas partículas es un leptón?", ["Protón", "Electrón", "Quark up", "Fotón"], "Electrón",
+   "El electrón es un leptón; el protón está hecho de quarks."],
+  ["¿Por qué un muón puede atravesar todo el detector CMS?",
+   ["Porque no tiene carga", "Porque interactúa poco con la materia y vive el tiempo suficiente",
+    "Porque es más pesado que el protón", "Porque lo frena el calorímetro"],
+   "Porque interactúa poco con la materia y vive el tiempo suficiente",
+   "Los electrones se frenan en el calorímetro; los muones llegan hasta las cámaras externas."],
+  ["¿Por qué se busca el Higgs en 4 leptones?",
+   ["Porque es muy frecuente", "Porque es raro pero muy limpio y fácil de medir", "Porque no hay fondo",
+    "Porque los leptones son neutros"],
+   "Porque es raro pero muy limpio y fácil de medir", "Es un canal raro, pero los leptones se miden con precisión."],
+  ["La masa invariante de 4 leptones que vienen de un Higgs debe estar cerca de…",
+   ["1 GeV", "91 GeV", "125 GeV", "1,000 GeV"], "125 GeV", "125 GeV es la masa del Higgs."],
+  ["¿Para qué sirven las simulaciones Monte Carlo?",
+   ["Para reemplazar los datos", "Para saber qué esperar de la señal y del fondo", "Para detectar leptones",
+    "Para acelerar protones"],
+   "Para saber qué esperar de la señal y del fondo", "Se comparan con los datos reales."],
+  ["¿Qué hace el 'peso' de un evento simulado?",
+   ["Indica su masa", "Hace que el total simulado corresponda a lo esperado en los datos reales", "Mide su carga",
+    "Lo elimina de la gráfica"],
+   "Hace que el total simulado corresponda a lo esperado en los datos reales", "peso = L × σ × k / N generados."],
+  ["Si en un intervalo hay N eventos, su incertidumbre estadística es aproximadamente…",
+   ["N", "√N", "N²", "1/N"], "√N", "En conteos, la incertidumbre es la raíz del número de eventos."],
+  ["¿Por qué se exige que la carga total de los 4 leptones sea cero?",
+   ["Porque el Higgs es neutro", "Porque los muones no tienen carga", "Para que el detector funcione", "No es necesario"],
+   "Porque el Higgs es neutro", "Dos Z neutras dan 2 leptones positivos y 2 negativos."],
+];
+const GLOSARIO = [
+  ["Evento", "Una colisión registrada por el detector."],
+  ["Leptón", "Partícula elemental como el electrón o el muón."],
+  ["Fermión / bosón", "Fermiones forman la materia; bosones transmiten las fuerzas."],
+  ["Campo de Higgs", "Campo que llena el espacio y da masa a las partículas elementales."],
+  ["Partícula virtual", "Partícula que existe solo un instante y no tiene su masa 'normal' (como la Z*)."],
+  ["GeV", "Unidad de energía y masa (1 GeV ≈ masa de un protón)."],
+  ["pT", "Momento transversal: perpendicular al haz de protones."],
+  ["η (eta)", "Ángulo respecto al haz; η = 0 es perpendicular."],
+  ["dxy, dz", "Distancia de la trayectoria al punto de colisión (cm)."],
+  ["SIP3D", "Qué tan compatible es el leptón con nacer en el punto de colisión."],
+  ["Aislamiento", "Cuánta otra actividad hay alrededor del leptón."],
+  ["Trigger", "Sistema que decide, en una fracción de segundo, qué eventos se guardan."],
+  ["Masa invariante", "Masa de una partícula reconstruida con sus hijas."],
+  ["Monte Carlo", "Simulación por computadora de colisiones."],
+  ["Señal / fondo", "Lo que buscamos / lo que se le parece."],
+  ["Sección eficaz (σ)", "Probabilidad de que ocurra un proceso."],
+  ["Luminosidad (L)", "Cantidad de colisiones acumuladas."],
+  ["fb⁻¹, pb⁻¹", "Unidades de luminosidad integrada (1 fb⁻¹ = 1,000 pb⁻¹)."],
+  ["Peso", "Factor que hace que una simulación corresponda a la cantidad esperada en datos reales."],
+  ["Cutflow", "Tabla de cuántos eventos sobreviven a cada corte."],
+  ["5 sigmas (5σ)", "Estándar para declarar un descubrimiento en física de partículas."],
+];
+$("glosario").innerHTML = tablaHTML(["", "Significado"], GLOSARIO).replace(/^<div class="tabla-wrap">|<\/div>$/g, "");
+$("quiz").innerHTML = PREGUNTAS.map(([preg, ops], i) => `<div class="pregunta"><p>${i + 1}. ${esc(preg)}</p><div class="opciones">
+  ${ops.map(o => `<label><input type="radio" name="q${i}" value="${esc(o)}"> ${esc(o)}</label>`).join("")}</div></div>`).join("");
+$("quiz-revisar").onclick = () => {
+  let buenas = 0, out = "";
+  PREGUNTAS.forEach(([, , correcta, explica], i) => {
+    const r = document.querySelector(`input[name="q${i}"]:checked`);
+    if (r && r.value === correcta) { buenas++; out += aviso("success", `${i + 1}. Correcta. ${esc(explica)}`); }
+    else out += aviso("error", `${i + 1}. Respuesta correcta: ${esc(correcta)}. ${esc(explica)}`);
+  });
+  $("quiz-resultado").innerHTML = out + `<p><strong>Obtuviste ${buenas} de ${PREGUNTAS.length}.</strong></p>`;
+};
+
+// =====================================================================================
+// 8. DESCARGAS
+// =====================================================================================
+$("enlaces-descarga").innerHTML =
+  `<li>💻 <strong>Código y resultados (GitHub):</strong> <a href="${REPO_URL}" target="_blank" rel="noopener">${REPO_URL}</a></li>
+   <li>📁 <strong>CSV completos (Google Drive):</strong> <a href="${DRIVE_URL}" target="_blank" rel="noopener">${DRIVE_URL}</a></li>`;
+
+// =====================================================================================
+// 9. NAVEGACIÓN: menú lateral (con #ancla en la dirección) y pestañas
+// =====================================================================================
+document.querySelectorAll(".tabs").forEach(t => {
+  const botones = t.querySelectorAll(":scope > .tablist > button");
+  const paneles = t.querySelectorAll(":scope > .tabpanel");
+  botones.forEach((b, i) => b.onclick = () => {
+    botones.forEach((x, j) => x.classList.toggle("activa", i === j));
+    paneles.forEach((x, j) => x.classList.toggle("visible", i === j));
+  });
+  botones[0].click();
+});
+document.querySelectorAll("[data-ir]").forEach(b => b.onclick = () => location.hash = b.dataset.ir);
+$("menu-btn").onclick = () => $("sidebar").classList.toggle("abierto");
+
+function mostrarSeccion() {
+  const id = (location.hash || "#introduccion").slice(1);
+  const sec = document.getElementById(id) && document.getElementById(id).classList.contains("pagina") ? id : "introduccion";
+  document.querySelectorAll("section.pagina").forEach(s => s.classList.toggle("visible", s.id === sec));
+  document.querySelectorAll("#menu a").forEach(a => a.classList.toggle("activa", a.getAttribute("href") === "#" + sec));
+  $("sidebar").classList.remove("abierto");
+  window.scrollTo(0, 0);
+  if (sec === "analiza") iniciarAnalisis();
+}
+window.addEventListener("hashchange", mostrarSeccion);
+
+demoPi();
+renderEjercicio();
+mostrarSeccion();
+</script>
+</body>
+</html>
