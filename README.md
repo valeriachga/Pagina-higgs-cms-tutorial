@@ -17,9 +17,7 @@ con datos abiertos de CMS de 2012.
 Los CSV completos (varios GB) **no están en este repositorio**: se descargan desde Google Drive
 (el enlace aparece en la sección "Descarga de datos" de la página).
 
-## Cómo se publica (GitHub Pages)
-
-La página es estática: no necesita Python ni ## Cómo se publica en un servidor
+## Cómo se publica en un servidor
 
 La página es estática: no necesita Python ni nada instalado en el servidor. Basta con copiar
 a una carpeta que publique el servidor web (Apache, nginx, etc.), con la misma estructura:
@@ -31,7 +29,9 @@ web_data/muestra_eventos.csv.gz
 resultados/grafica_final.png   (opcional)
 ```
 
-**: el navegador no deja leer la muestra de datos
+## Cómo verla en tu computadora
+
+Abrir `index.html` con doble clic **no funciona**: el navegador no deja leer la muestra de datos
 desde archivos locales. Hay que abrir un servidor local en la carpeta del repositorio:
 
 ```bash
