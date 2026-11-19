@@ -7,8 +7,8 @@ QUÉ HACE ESTE SCRIPT
 Reduce los 8 CSV de 4 leptones (varios GB) a UN archivo pequeño,
 `web_data/muestra_eventos.csv.gz`, que es el que lee la página web.
 
-La página no puede cargar los CSV completos (el servidor gratuito tiene poca
-memoria). Así que, en lugar de guardar los leptones, este script guarda UNA FILA
+La página no puede cargar los CSV completos (la descarga el navegador de cada
+estudiante y pesarían varios GB). Así que, en lugar de guardar los leptones, este script guarda UNA FILA
 POR EVENTO con las variables ya resumidas que la página necesita para aplicar
 los cortes de forma interactiva.
 

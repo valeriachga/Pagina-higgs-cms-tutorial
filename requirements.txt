@@ -1,4 +1,4 @@
-streamlit
+# Solo para los scripts de scripts/ (la página index.html no necesita Python)
 pandas
 numpy
 matplotlib

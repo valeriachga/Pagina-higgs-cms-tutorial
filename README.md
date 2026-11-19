@@ -1,48 +1,57 @@
 # El bosón de Higgs con CMS Open Data: tutorial interactivo
 
+Página web educativa (nivel preparatoria) para buscar el bosón de Higgs en el canal H → ZZ → 4 leptones
+con datos abiertos de CMS de 2012.
+
+**Página publicada:** https://valeriachga.github.io/Pagina-higgs-cms-tutorial/
+
 ## Contenido del repositorio
 
 | Ruta | Para qué sirve |
 |---|---|
-| `app.py` | La página web (archivo principal). |
-| `requirements.txt` | Librerías de Python necesarias. |
+| `index.html` | La página web completa (HTML + JavaScript). Todo el cálculo lo hace el navegador. |
 | `web_data/muestra_eventos.csv.gz` | Muestra reducida (una fila por evento) que lee la página. **Es lo único de datos que necesita.** |
 | `imagenes/` | Ilustraciones de la página (PNG). |
 | `scripts/` | Código del análisis: `02_cutflow.py`, `03_grafica_final.py`, `preparar_muestra.py` (genera la muestra) y `generar_imagenes.py` (genera las ilustraciones). |
-| `resultados/` | Gráficas y tablas del análisis (opcional). |
+| `resultados/` | Gráficas y tablas del análisis (opcional). Si existe `resultados/grafica_final.png`, la página la muestra en "Resultado final". |
+| `requirements.txt` | Librerías de Python para los scripts (la página no las necesita). |
 
 Los CSV completos (varios GB) **no están en este repositorio**: se descargan desde Google Drive
 (el enlace aparece en la sección "Descarga de datos" de la página).
 
-## Cómo ejecutarla (servidor o computadora)
+## Cómo se publica (GitHub Pages)
 
-Requiere **Python 3.10 o superior**.
+La página es estática: no necesita Python ni un servidor propio.
+
+1. En GitHub: **Settings → Pages**.
+2. En "Branch" elegir `main` y la carpeta `/ (root)`, y dar clic en **Save**.
+3. En uno o dos minutos queda en `https://valeriachga.github.io/Pagina-higgs-cms-tutorial/`.
+
+Cada vez que se sube un cambio a `main`, GitHub Pages actualiza la página sola.
+
+## Cómo verla en tu computadora
+
+Abrir `index.html` con doble clic **no funciona**: el navegador no deja leer la muestra de datos
+desde archivos locales. Hay que abrir un servidor local en la carpeta del repositorio:
 
 ```bash
-pip install -r requirements.txt
-streamlit run app.py
+python -m http.server 8000
 ```
 
-Por defecto abre en el puerto 8501. Para un servidor:
-
-```bash
-streamlit run app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true
-```
-
-Notas para el servidor:
-- Necesita un servidor que **ejecute Python** (no sirve un hosting estático de solo HTML).
-- Si se publica detrás de un proxy (nginx, Apache), hay que habilitar **WebSockets**, porque Streamlit los usa.
-- Para dejarla corriendo de forma permanente se puede usar `systemd`, `supervisor` o Docker.
-- Memoria: con la muestra reducida basta con unos 500 MB de RAM.
+y entrar a http://localhost:8000
 
 ## Regenerar los archivos (opcional)
 
 Solo si se tienen los CSV completos en una carpeta `data/` junto a `scripts/`:
 
 ```bash
+pip install -r requirements.txt
 python scripts/preparar_muestra.py     # crea web_data/muestra_eventos.csv.gz
 python scripts/generar_imagenes.py     # crea las imágenes en imagenes/
 ```
+
+Los valores de los cortes oficiales están al inicio del código JavaScript de `index.html`
+(sección "1. LOS CORTES") y son los mismos que en `scripts/02_cutflow.py`.
 
 ## Créditos
 
