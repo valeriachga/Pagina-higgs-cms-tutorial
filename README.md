@@ -1,6 +1,7 @@
 # El bosón de Higgs con CMS Open Data: tutorial interactivo
 
-**Autor:** Valeria Rocha Garcia
+**Autor:** Valeria Rocha Garcia. Esta página es el producto de sus prácticas profesionales,
+con la asesoría de Isabel Pedraza.
 
 Página web educativa (nivel preparatoria) para buscar el bosón de Higgs en el canal H → ZZ → 4 leptones
 con datos abiertos de CMS de 2012.
@@ -57,7 +58,7 @@ Los valores de los cortes oficiales están al inicio del código JavaScript de `
 
 ## Créditos
 
-- Autor: Valeria Rocha Garcia.
+- Autor: Valeria Rocha Garcia. Producto de sus prácticas profesionales, con la asesoría de Isabel Pedraza.
 - Datos: colaboración CMS, [CERN Open Data](https://opendata.cern.ch/record/12360), licencia CC0.
 - Análisis basado en: CMS Collaboration, *Observation of a new boson at a mass of 125 GeV*, arXiv:1207.7235.
 - Las ilustraciones son esquemas hechos para esta página; no son imágenes reales de CMS ni están a escala.
