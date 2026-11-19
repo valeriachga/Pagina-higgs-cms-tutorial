@@ -1,9 +1,5 @@
 # El bosón de Higgs con CMS Open Data: tutorial interactivo
 
-Página educativa (nivel preparatoria) hecha con [Streamlit](https://streamlit.io). Explica física de partículas
-básica, las simulaciones Monte Carlo y deja aplicar los cortes de selección de eventos del análisis H → ZZ → 4ℓ
-con datos abiertos de CMS (2012, 8 TeV, 11.58 fb⁻¹).
-
 ## Contenido del repositorio
 
 | Ruta | Para qué sirve |
