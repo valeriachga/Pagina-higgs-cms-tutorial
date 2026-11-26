@@ -12,7 +12,7 @@ con datos abiertos de CMS de 2012.
 |---|---|
 | `index.html` | La página web completa (HTML + JavaScript). Todo el cálculo lo hace el navegador. |
 | `web_data/muestra_eventos.csv.gz` | Muestra reducida (una fila por evento) que lee la página. **Es lo único de datos que necesita.** |
-| `imagenes/` | Ilustraciones de la página (PNG). |
+| `imagenes/` | Ilustraciones de la página (PNG), generadas con IA por Claude (Anthropic). |
 | `scripts/` | Código del análisis: `02_cutflow.py`, `03_grafica_final.py`, `preparar_muestra.py` (genera la muestra) y `generar_imagenes.py` (genera las ilustraciones). |
 | `resultados/` | Gráficas y tablas del análisis (opcional). Si existe `resultados/grafica_final.png`, la página la muestra en "Resultado final". |
 | `requirements.txt` | Librerías de Python para los scripts (la página no las necesita). |
@@ -61,4 +61,5 @@ Los valores de los cortes oficiales están al inicio del código JavaScript de `
 - Autor: Valeria Rocha Garcia. Producto de sus prácticas profesionales, con la asesoría de Isabel Pedraza.
 - Datos: colaboración CMS, [CERN Open Data](https://opendata.cern.ch/record/12360), licencia CC0.
 - Análisis basado en: CMS Collaboration, *Observation of a new boson at a mass of 125 GeV*, arXiv:1207.7235.
-- Las ilustraciones son esquemas hechos para esta página; no son imágenes reales de CMS ni están a escala.
+- Las ilustraciones son esquemas generados con inteligencia artificial por Claude (Anthropic) para esta página;
+  cada imagen lo indica en su esquina inferior. No son imágenes reales de CMS ni están a escala.
