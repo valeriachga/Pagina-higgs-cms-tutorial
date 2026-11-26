@@ -4,6 +4,9 @@ generar_imagenes.py
 Genera las ilustraciones de la página web (esquemas, NO fotografías ni imágenes
 reales de CMS) y las guarda como PNG en la carpeta `imagenes/` del repositorio.
 
+Las ilustraciones fueron generadas con inteligencia artificial (Claude, de Anthropic).
+Por eso cada imagen lleva abajo a la derecha la leyenda de CREDITO_IA.
+
 Todas usan un fondo claro propio, para que se vean bien tanto si el navegador
 está en modo claro como en modo oscuro.
 
@@ -13,10 +16,12 @@ Cómo se usa (desde la carpeta principal del repositorio):
 Si quieres cambiar colores o textos, edita este archivo y vuelve a ejecutarlo.
 """
 
+import io
 from pathlib import Path
 
 import numpy as np
 from matplotlib.figure import Figure
+from matplotlib.image import imread
 from matplotlib.patches import Arc, Circle, Ellipse, FancyBboxPatch, Rectangle, Wedge
 
 SALIDA = Path(__file__).resolve().parent.parent / "imagenes"
@@ -38,8 +43,23 @@ def lienzo(w, h):
     return fig, ax
 
 
+CREDITO_IA = "Imagen generada con IA por Claude (Anthropic)"
+DPI = 200
+
+
 def guardar(fig, nombre):
-    fig.savefig(SALIDA / nombre, dpi=200, facecolor=FONDO)
+    """Guarda la figura y le agrega abajo una franja con la leyenda CREDITO_IA."""
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=DPI, facecolor=FONDO)
+    buf.seek(0)
+    img = imread(buf)
+    alto, ancho = img.shape[:2]
+    franja = 46                                   # alto de la franja de la leyenda, en pixeles
+    final = Figure(figsize=(ancho / DPI, (alto + franja) / DPI), dpi=DPI, facecolor=FONDO)
+    final.figimage(img, xo=0, yo=franja, origin="upper")
+    final.text(1 - 16 / ancho, franja / 2 / (alto + franja), CREDITO_IA,
+               ha="right", va="center", fontsize=7.5, color=GRIS, style="italic")
+    final.savefig(SALIDA / nombre, dpi=DPI, facecolor=FONDO)
     print("listo:", nombre)
 
 
@@ -259,6 +279,49 @@ def lhc():
     guardar(fig, "lhc.png")
 
 
+# ---------------------------------------------------------------- 6b. línea de tiempo de energías del LHC
+# Colisiones protón-protón. Energía de colisión = 2 × energía de cada haz.
+PERIODOS_LHC = [  # (año inicio, año fin, nombre, energía por haz [TeV] o None si el LHC estuvo parado)
+    (2010, 2011, "Run 1", 3.5),
+    (2012, 2012, "Run 1", 4.0),
+    (2013, 2014, "Paro largo 1", None),
+    (2015, 2018, "Run 2", 6.5),
+    (2019, 2021, "Paro largo 2", None),
+    (2022, 2026, "Run 3", 6.8),
+]
+
+
+def energias_lhc():
+    fig = Figure(figsize=(8, 4.3), facecolor=FONDO)
+    ax = fig.add_axes([0.085, 0.2, 0.89, 0.66], facecolor=FONDO)
+    ax.spines[["top", "right"]].set_visible(False)
+    for ini, fin, nombre, haz in PERIODOS_LHC:
+        x0, ancho = ini - 0.45, fin - ini + 0.9
+        if haz is None:
+            ax.add_patch(Rectangle((x0, 0), ancho, 1.2, fc=GRIS_CLARO, ec="none"))
+            texto(ax, (ini + fin) / 2, 2.1, f"{nombre}\n(sin colisiones)", fs=8, color=GRIS)
+            continue
+        es_2012 = ini == 2012
+        fc, ec = (ROJO_CLARO, ROJO) if es_2012 else (AZUL_CLARO, AZUL)
+        choque = 2 * haz
+        ax.add_patch(Rectangle((x0, 0), ancho, choque, fc=fc, ec=ec, lw=1.3))
+        texto(ax, (ini + fin) / 2, choque + 0.75, f"{choque:g} TeV", fs=10.5, weight="bold", color=ec)
+        texto(ax, (ini + fin) / 2, choque / 2, f"{haz:g} + {haz:g}", fs=9, color=TINTA)
+        texto(ax, (ini + fin) / 2, choque - 0.6, nombre, fs=8, color=GRIS)
+    ax.annotate("datos de\nesta página", xy=(2012.47, 6.0), xytext=(2013.55, 9.2), fontsize=8.5, color=ROJO,
+                ha="center", arrowprops=dict(arrowstyle="->", color=ROJO))
+    ax.set_xlim(2009.4, 2026.6)
+    ax.set_ylim(0, 15.5)
+    ax.set_xticks(range(2010, 2027))
+    ax.set_xticklabels([str(a) for a in range(2010, 2027)], rotation=45, fontsize=8.5)
+    ax.tick_params(axis="y", labelsize=9)
+    ax.set_ylabel("Energía de colisión (TeV)", fontsize=9.5)
+    ax.set_title("Energía del LHC por año (colisiones protón-protón)", fontsize=11)
+    fig.text(0.5, 0.015, "Dentro de cada barra: energía de cada haz (TeV).  Arriba: energía del choque = suma de los dos haces.",
+             ha="center", fontsize=8.5, color=GRIS)
+    guardar(fig, "energias_lhc.png")
+
+
 # ---------------------------------------------------------------- 7. detector CMS (corte transversal)
 def cms_detector():
     fig, ax = lienzo(8, 5.4)
@@ -406,7 +469,7 @@ def masa_invariante():
         ax.spines[["top", "right"]].set_visible(False)
         ax.set_xticks([70, 100, 125, 150, 180]); ax.set_yticks([])
         ax.tick_params(labelsize=8.5)
-        ax.set_xlabel("masa de 4 leptones (GeV)", fontsize=9)
+        ax.set_xlabel("Masa invariante de 4 leptones (GeV)", fontsize=9)
         ax.set_ylabel("eventos", fontsize=9)
         ax.set_title(tit, fontsize=10.5)
         y = fondo + (pico if k else 0)
@@ -457,8 +520,8 @@ def senal_fondo():
     ax.stairs(zz, bordes, fill=True, fc=AZUL_CLARO, ec=AZUL, lw=1.2, label="Fondo ZZ (simulación)")
     rng = np.random.default_rng(11)
     datos = rng.poisson(zz + h)
-    ax.errorbar(c, datos, yerr=np.sqrt(np.maximum(datos, 1)), fmt="o", color=TINTA, ms=3.5, label="Datos")
-    ax.set_xlabel("masa de 4 leptones (GeV)", fontsize=9.5)
+    ax.errorbar(c, datos, yerr=np.sqrt(np.maximum(datos, 1)), fmt="o", color=TINTA, ms=3.5, label="Datos (ejemplo)")
+    ax.set_xlabel("Masa invariante de 4 leptones (GeV)", fontsize=9.5)
     ax.set_ylabel("eventos", fontsize=9.5)
     ax.set_ylim(0, 25)
     ax.tick_params(labelsize=9)
@@ -647,7 +710,7 @@ def coordenadas():
 
 
 if __name__ == "__main__":
-    for f in (portada, atomo, modelo_estandar, campo_higgs, higgs_decay, lhc, cms_detector, eta_pt, impacto,
+    for f in (portada, atomo, modelo_estandar, campo_higgs, higgs_decay, lhc, energias_lhc, cms_detector, eta_pt, impacto,
               aislamiento, masa_invariante, montecarlo_flujo, senal_fondo, pesos, poisson, evento_csv,
               higgs_desintegraciones, coordenadas):
         f()

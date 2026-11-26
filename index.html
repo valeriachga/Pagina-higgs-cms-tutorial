@@ -21,7 +21,7 @@
   QUÉ ARCHIVOS LEE (dentro del mismo repositorio)
   -----------------------------------------------
     web_data/muestra_eventos.csv.gz   -> generado con scripts/preparar_muestra.py
-    imagenes/*.png                    -> ilustraciones (scripts/generar_imagenes.py)
+    imagenes/*.png                    -> ilustraciones generadas con IA por Claude (scripts/generar_imagenes.py)
     resultados/grafica_final.png      -> tu gráfica final oficial (opcional)
 
   CÓMO SE VE EN TU COMPUTADORA
@@ -188,7 +188,7 @@
   <p class="autor-intro">Autor: Valeria Rocha Garcia. Esta página es el producto de sus prácticas profesionales, con la asesoría de Isabel Pedraza.</p>
   <figure><img src="imagenes/portada.png" alt="" style="width:760px"></figure>
   <p>Bienvenido. En esta página vas a hacer lo mismo que hace un científico del experimento CMS:
-    tomar millones de colisiones de partículas y <strong>filtrar</strong> los datos hasta encontrar una señal
+    tomar millones de colisiones de partículas registradas por el detector CMS y <strong>filtrar</strong> los datos hasta encontrar una señal
     muy pequeña, la del <strong>bosón de Higgs</strong>. No necesitas conocimientos previos de física, solo curiosidad.</p>
   <div class="aviso info">Los datos son reales: colisiones protón-protón a 8 TeV registradas por CMS en 2012 y
     liberadas públicamente en el portal CERN Open Data.</div>
@@ -211,7 +211,7 @@
     <li>Explicar qué son las partículas, el Modelo Estándar y el bosón de Higgs.</li>
     <li>Describir cómo un detector como CMS identifica electrones y muones.</li>
     <li>Explicar qué es una simulación Monte Carlo y para qué sirve.</li>
-    <li>Aplicar cortes a datos reales y ver cómo aparece (o no) una señal.</li>
+    <li>Aplicar cortes a datos reales (los leptones que midió CMS) y ver cómo aparece (o no) una señal.</li>
   </ul>
   <h2>Ir directo a una sección</h2>
   <div class="rejilla-botones">
@@ -280,7 +280,7 @@
         </tbody>
       </table></div>
       <p>Cada partícula tiene una <strong>antipartícula</strong> con la carga contraria: el positrón (+1) para el
-        electrón y el antimuón (+1) para el muón. En el detector distinguimos ambos por hacia dónde
+        electrón y el antimuón (+1) para el muón. En el detector CMS distinguimos ambos por hacia dónde
         se curvan en el campo magnético.</p>
       <div class="aviso info">La carga eléctrica se conserva. Un Higgs es neutro, así que si se desintegra en 4 leptones,
         la suma de sus cargas debe ser cero: dos positivos y dos negativos.</div>
@@ -366,8 +366,26 @@
       <figure><img src="imagenes/lhc.png" alt="" style="width:720px"><figcaption>El LHC y sus cuatro grandes experimentos.</figcaption></figure>
       <p>El <strong>LHC</strong> (Gran Colisionador de Hadrones) es un anillo de unos 27 km de circunferencia,
         enterrado cerca de Ginebra. Acelera protones casi a la velocidad de la luz en dos haces que giran
-        en sentidos opuestos. En 2012 cada haz tenía 4 TeV, así que cada choque tenía 8 TeV de energía.
-        Cada choque se llama <strong>evento</strong>.</p>
+        en sentidos opuestos. La energía de cada choque es la suma de las energías de los dos haces:
+        en 2012 cada haz tenía 4 TeV, así que cada choque tenía 8 TeV. Cada choque se llama <strong>evento</strong>.</p>
+      <h3>La energía del LHC año con año</h3>
+      <p>El LHC no siempre ha funcionado a la misma energía: se ha ido subiendo por etapas (llamadas <em>Run</em>),
+        con paros largos entre ellas para mejorar el acelerador y los detectores.</p>
+      <figure><img src="imagenes/energias_lhc.png" alt="Gráfica de barras con la energía de colisión del LHC por año, de 2010 a 2026" style="width:720px">
+        <figcaption>Energía de cada haz y de cada choque protón-protón en el LHC, por año. Los datos de esta página son de 2012 (8 TeV).</figcaption></figure>
+      <div class="tabla-wrap"><table>
+        <thead><tr><th>Años</th><th>Etapa</th><th class="num">Energía de cada haz</th><th class="num">Energía del choque</th></tr></thead>
+        <tbody>
+          <tr><th>2010–2011</th><td>Run 1</td><td class="num">3.5 TeV</td><td class="num">7 TeV</td></tr>
+          <tr><th>2012</th><td>Run 1 (datos de esta página)</td><td class="num">4 TeV</td><td class="num"><strong>8 TeV</strong></td></tr>
+          <tr><th>2013–2014</th><td>Paro largo 1</td><td class="num">—</td><td class="num">sin colisiones</td></tr>
+          <tr><th>2015–2018</th><td>Run 2</td><td class="num">6.5 TeV</td><td class="num">13 TeV</td></tr>
+          <tr><th>2019–2021</th><td>Paro largo 2</td><td class="num">—</td><td class="num">sin colisiones</td></tr>
+          <tr><th>2022–2026</th><td>Run 3</td><td class="num">6.8 TeV</td><td class="num">13.6 TeV</td></tr>
+        </tbody>
+      </table></div>
+      <p class="caption">Energía del choque = 2 × energía de cada haz (los dos haces chocan de frente).
+        Valores para colisiones protón-protón.</p>
       <p>Los protones viajan en paquetes que se cruzan decenas de millones de veces por segundo, y en
         cada cruce chocan, en promedio, alrededor de 20 pares de protones a la vez. Es imposible guardar
         todo: un sistema de selección llamado <em>trigger</em> decide en una fracción de segundo qué eventos
@@ -405,7 +423,8 @@
 
     <div class="tabpanel">
       <h2>Las variables que usaremos</h2>
-      <p>Estas son las medidas que usan los cortes del tutorial. Cada una se explica con un esquema.</p>
+      <p>Estas son las medidas que el detector CMS hizo de cada leptón y que usan los cortes del tutorial.
+        Cada una se explica con un esquema.</p>
       <h3>η y pT: ¿hacia dónde va y con cuánta fuerza?</h3>
       <figure><img src="imagenes/eta_pt.png" alt="" style="width:720px"></figure>
       <p><strong>η (eta)</strong> indica el ángulo respecto al haz: η = 0 es perpendicular y valores grandes son casi
@@ -425,10 +444,10 @@
 
     <div class="tabpanel">
       <h2>Del detector al archivo CSV</h2>
-      <figure><img src="imagenes/evento_csv.png" alt="" style="width:720px"><figcaption>Cada evento con 4 leptones se convierte en una fila de la tabla.</figcaption></figure>
+      <figure><img src="imagenes/evento_csv.png" alt="" style="width:720px"><figcaption>Cada evento con 4 leptones medidos por CMS se convierte en una fila de la tabla.</figcaption></figure>
       <ol>
         <li>El detector registra la colisión y el <em>trigger</em> decide si la guarda.</li>
-        <li>Se <strong>reconstruyen</strong> las partículas a partir de las señales de cada capa.</li>
+        <li>Se <strong>reconstruyen</strong> las partículas (por ejemplo, los leptones) a partir de las señales que dejaron en cada capa de CMS.</li>
         <li>CERN Open Data publica los eventos en archivos con formato ROOT.</li>
         <li>Nosotros los convertimos a <strong>CSV</strong>: una fila por evento y una columna por cada medición
           (<code>pt1</code>, <code>eta1</code>, <code>Q1</code>…).</li>
@@ -451,9 +470,12 @@
 
     <div class="tabpanel">
       <h2>La receta de un análisis</h2>
+      <div class="aviso info">Todos los leptones (electrones y muones) que se analizan en esta página fueron
+        <strong>medidos por el detector CMS</strong> del LHC en 2012. Nosotros no medimos nada: analizamos las
+        mediciones que hizo CMS y que la colaboración publicó en el portal CERN Open Data.</div>
       <ol>
         <li><strong>Elegir qué buscar:</strong> un proceso concreto, aquí H → ZZ → 4 leptones.</li>
-        <li><strong>Seleccionar eventos:</strong> aplicar cortes para quedarnos con los que parecen la señal.</li>
+        <li><strong>Seleccionar eventos:</strong> aplicar cortes a los leptones que midió CMS para quedarnos con los eventos que parecen la señal.</li>
         <li><strong>Predecir el fondo:</strong> con simulaciones Monte Carlo, qué esperamos <em>sin</em> Higgs.</li>
         <li><strong>Comparar con los datos:</strong> poner datos y predicción en la misma gráfica.</li>
         <li><strong>Medir la incertidumbre:</strong> ¿el exceso es mayor que una fluctuación al azar?</li>
@@ -464,8 +486,9 @@
     <div class="tabpanel">
       <h2>La masa invariante</h2>
       <figure><img src="imagenes/masa_invariante.png" alt="" style="width:720px"></figure>
-      <p>Si una partícula pesada se desintegra, no podemos verla, pero sí a sus hijas. Con la energía
-        y el momento de las hijas se reconstruye la masa de la madre:</p>
+      <p>Si una partícula pesada se desintegra, no podemos verla, pero el detector CMS sí mide a sus hijas
+        (aquí, los leptones). Con la energía y el momento que CMS midió para las hijas se reconstruye la masa
+        de la madre:</p>
       <div class="formula"><i>m</i><sup>2</sup> = <i>E</i><sup>2</sup> − <i>p<sub>x</sub></i><sup>2</sup> − <i>p<sub>y</sub></i><sup>2</sup> − <i>p<sub>z</sub></i><sup>2</sup>
         &nbsp;&nbsp;(<i>E</i> y <b>p</b> sumados de todas las hijas)</div>
       <p>Ejemplo: si un electrón y un positrón vienen de un Z, su masa invariante sale cerca de 91 GeV.
@@ -475,8 +498,9 @@
       <hr>
       <!-- Ejercicio interactivo (lo llena JavaScript: ver "EJERCICIO DE MASA INVARIANTE") -->
       <h3>Ejercicio: ¿de qué partícula vienen estos leptones?</h3>
-      <p>Un detector midió los leptones de la tabla (los tratamos sin masa, porque es muy pequeña comparada
-        con su energía). <strong>Calcula su masa invariante</strong> y decide qué partícula los produjo.</p>
+      <p>Imagina que el detector CMS midió los leptones de la tabla. Son valores de ejemplo, generados para
+        este ejercicio con el mismo formato que usa CMS (pT, η, φ). Los tratamos sin masa, porque es muy pequeña
+        comparada con su energía. <strong>Calcula su masa invariante</strong> y decide qué partícula los produjo.</p>
       <div class="fila" style="justify-content:space-between">
         <div class="opciones horizontal" id="ej-nivel">
           <strong style="margin-right:1rem">Nivel</strong>
@@ -492,8 +516,8 @@
       <h2>¿Por qué buscar el Higgs en 4 leptones?</h2>
       <figure><img src="imagenes/higgs_decay.png" alt="" style="width:720px"><figcaption>Esquema de la desintegración H → ZZ* → 4 leptones.</figcaption></figure>
       <p>Una forma en que el Higgs se desintegra es <strong>H → Z + Z* → 4 leptones</strong> (electrones o muones).
-        Es un canal muy raro, solo alrededor de 1 Higgs de cada 8,000, pero muy <strong>limpio</strong>: los leptones
-        se miden con gran precisión y hay poco ruido de fondo. Junto con la desintegración en dos fotones,
+        Es un canal muy raro, solo alrededor de 1 Higgs de cada 8,000, pero muy <strong>limpio</strong>: el detector
+        CMS mide los leptones con gran precisión y hay poco ruido de fondo. Junto con la desintegración en dos fotones,
         fue uno de los canales del descubrimiento de 2012.</p>
       <p>Como el Higgs (125 GeV) pesa menos que dos Z (2 × 91 GeV), una de las dos Z es <em>virtual</em> y
         tiene una masa menor. Por eso en los cortes la masa de Z2 se permite desde 12 GeV.</p>
@@ -517,7 +541,7 @@
 
     <div class="tabpanel">
       <h2>Selección de eventos: los cortes</h2>
-      <p>Entre millones de eventos, casi todos contienen leptones <em>falsos</em> (por ejemplo, de otras
+      <p>Entre los millones de eventos que registró CMS, casi todos contienen leptones <em>falsos</em> (por ejemplo, de otras
         partículas que se parecen a un leptón). Un <strong>corte</strong> (o filtro) descarta eventos que no
         se comportan como un Higgs real. Los que usamos:</p>
       <div class="tabla-wrap"><table>
@@ -652,7 +676,7 @@
 
     <div class="tabpanel">
       <h2>¿Cómo se ven los archivos CSV?</h2>
-      <p>Cada fila es un <strong>evento</strong> con 4 leptones. Las columnas con número (1 a 4) se repiten para
+      <p>Cada fila es un <strong>evento</strong> con 4 leptones medidos por el detector CMS. Las columnas con número (1 a 4) se repiten para
         cada leptón, ordenados por pT.</p>
       <div class="tabla-wrap"><table>
         <thead><tr><th>Columna</th><th>Significado</th></tr></thead>
@@ -728,7 +752,7 @@
     <div class="tabpanel">
       <h2>Lo que aprendiste</h2>
       <ul>
-        <li>Los datos de colisiones contienen muchísimo ruido; los <strong>cortes</strong> sirven para limpiarlos.</li>
+        <li>Los datos de colisiones que registró CMS contienen muchísimo ruido; los <strong>cortes</strong> sirven para limpiarlos.</li>
         <li>Las <strong>simulaciones Monte Carlo</strong> nos dicen qué esperar de la señal y del fondo, y los <strong>pesos</strong>
           permiten compararlas con los datos.</li>
         <li>El Higgs se busca como un <strong>pico</strong> cerca de 125 GeV en la masa de 4 leptones.</li>
@@ -769,7 +793,8 @@
     <li>Autor: <strong>Valeria Rocha Garcia</strong>. Esta página es el producto de sus prácticas profesionales, con la asesoría de <strong>Isabel Pedraza</strong>.</li>
     <li>Datos: colaboración CMS, portal <a href="https://opendata.cern.ch/record/12360" target="_blank" rel="noopener">CERN Open Data</a>, licencia CC0.</li>
     <li>Análisis basado en: CMS Collaboration, <em>Observation of a new boson at a mass of 125 GeV</em>, arXiv:1207.7235.</li>
-    <li>Las ilustraciones son esquemas hechos para esta página; no son imágenes reales de CMS ni están a escala.</li>
+    <li>Las ilustraciones (carpeta <code>imagenes/</code>) son esquemas <strong>generados con inteligencia artificial por Claude</strong>
+      (Anthropic) para esta página, y cada una lo indica en su esquina inferior. No son imágenes reales de CMS ni están a escala.</li>
     <li>Esta página está inspirada en la aplicación <em>ATLAS Open Data en el aula</em>.</li>
   </ul>
 </section>
@@ -1070,8 +1095,8 @@ function figura(ok, titulo) {
     s += `<line x1="${izq - 5}" y1="${Y(v)}" x2="${izq}" y2="${Y(v)}" stroke="black"/>` +
          `<text x="${izq - 8}" y="${Y(v) + 4}" text-anchor="end">${g(v)}</text>`;
   }
-  s += `<text x="${izq + anchoP / 2}" y="${A - 12}" text-anchor="middle" font-size="17">Mass 4 leptons / GeV</text>`;
-  s += `<text transform="translate(20,${arr + altoP / 2}) rotate(-90)" text-anchor="middle" font-size="17">N_Events</text>`;
+  s += `<text x="${izq + anchoP / 2}" y="${A - 12}" text-anchor="middle" font-size="17">Masa invariante de 4 leptones (GeV)</text>`;
+  s += `<text transform="translate(20,${arr + altoP / 2}) rotate(-90)" text-anchor="middle" font-size="17">Número de eventos</text>`;
   // leyenda (arriba a la derecha)
   const lx = izq + anchoP - 290, ly = arr + 18;
   s += `<line x1="${lx}" y1="${ly}" x2="${lx + 22}" y2="${ly}" stroke="red" stroke-width="2"/>` +
@@ -1506,7 +1531,7 @@ const PREGUNTAS = [
    "Porque el Higgs es neutro", "Dos Z neutras dan 2 leptones positivos y 2 negativos."],
 ];
 const GLOSARIO = [
-  ["Evento", "Una colisión registrada por el detector."],
+  ["Evento", "Una colisión registrada por el detector CMS."],
   ["Leptón", "Partícula elemental como el electrón o el muón."],
   ["Fermión / bosón", "Fermiones forman la materia; bosones transmiten las fuerzas."],
   ["Campo de Higgs", "Campo que llena el espacio y da masa a las partículas elementales."],
